@@ -1,0 +1,80 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "shesha-geometry"
+version = "0.1.0"
+description = "Self-consistency metrics for representational stability analysis"
+readme = "README.md"
+license = {text = "MIT"}
+authors = [
+    {name = "Prashant Raju", email = "rajuprashant@gmail.com"}
+]
+
+keywords = [
+    "representation learning",
+    "neural networks", 
+    "geometric stability",
+    "geometric analysis",
+    "manifold analysis",
+    "latent space",
+    "single-cell",
+    "crispr",
+    "perturb-seq",
+    "anndata",
+    "functional genomics",
+    "phenotypic stability",
+    "computational biology",
+    "scanpy",
+    "llm alignment",
+    "concept drift",
+    "model steering",
+    "ai safety",
+    "constitutional ai",
+    "perturbation analysis"
+]
+
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering",
+]
+requires-python = ">=3.8"
+dependencies = [
+    "numpy>=1.20",
+    "scipy>=1.7",
+    "anndata>=0.8"
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+    "pytest-cov",
+    "black",
+    "ruff",
+]
+
+[project.urls]
+Homepage = "https://github.com/prashantcraju/shesha"
+Documentation = "https://github.com/prashantcraju/shesha#readme"
+Repository = "https://github.com/prashantcraju/shesha"
+Issues = "https://github.com/prashantcraju/shesha/issues"
+
+[tool.setuptools.packages.find]
+where = ["."]
+
+[tool.black]
+line-length = 100
+target-version = ["py38", "py39", "py310", "py311"]
+
+[tool.ruff]
+line-length = 100
+select = ["E", "F", "W", "I"]
