@@ -1,3 +1,4 @@
+[![DOI](https://zenodo.org/badge/1133185691.svg)](https://doi.org/10.5281/zenodo.18227453)
 <p align="center">
     <img src="https://i.imgur.com/oJ5YhBo.jpg" alt="Shesha Logo" width="300">
 </p>
@@ -183,7 +184,18 @@ print(f"KLF1 Stability: {stability['KLF1']:.3f}")  # e.g., 0.85 (High = Consiste
 print(f"KLF1 Magnitude: {magnitude['KLF1']:.3f}")  # e.g., 2.40 (High = Strong)
 ```
 
+## Tutorials
 
+Explore `shesha` with these interactive notebooks. Click the badges to run them instantly in Google Colab.
+
+| Tutorial | Description | Link |
+| :--- | :--- | :--- |
+| **LLM Embeddings** | **Geometric Stability:** Analyze embedding stability across layers and models using `feature_split`. | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/prashantcraju/shesha/blob/main/tutorials/llm_embeddings_tutorial.ipynb) |
+| **Steering Vectors** | **Consistency Analysis:** Compute steering vectors from contrastive pairs and measure their effectiveness and consistency. | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/prashantcraju/shesha/blob/main/tutorials/steering_vectors_tutorial.ipynb) |
+| **Vision Models** | **Architecture Comparison:** Compare geometric stability and class separability across ResNets, ViTs, and other vision architectures. | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/prashantcraju/shesha/blob/main/tutorials/vision_models_tutorial.ipynb) |
+| **Representational Drift** | **Perturbation Analysis:** Measure drift caused by Gaussian noise injection and LoRA fine-tuning using `rdm_drift`. | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/prashantcraju/shesha/blob/main/tutorials/drift_tutorial.ipynb) |
+| **Training Dynamics** | **Live Monitoring:** Track geometric stability during model training to detect representation collapse or divergence. | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/prashantcraju/shesha/blob/main/tutorials/training_drift_tutorial.ipynb) |
+| **CRISPR (Bio)** | **Single-Cell Analysis:** Use `shesha.bio` to analyze stability and effect sizes in single-cell CRISPR perturbation experiments. | [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/prashantcraju/shesha/blob/main/tutorials/crispr_tutorial.ipynb) |
 ## API Reference
 
 ### `shesha.feature_split(X, n_splits=30, metric='cosine', seed=None, max_samples=1600)`
@@ -336,11 +348,20 @@ Computes the magnitude (effect size) for every perturbation.
 If you use `shesha-geometry`, please cite:
 ```bibtex
 @software{shesha2026,
-author = {Raju, Prashant C.},
-title = {Shesha: Self-consistency Metrics for Representational Stability},
-year = {2026},
-url = {https://github.com/prashantcraju/shesha},
-note = {Python package version 0.1.0}
+    title = {Shesha: Self-consistency Metrics for Representational Stability},
+    author = {Prashant C. Raju},
+    year = {2026},
+    url = {https://github.com/prashantcraju/shesha},
+    publisher = {Zenodo},
+    doi = {10.5281/zenodo.18227454},
+    note = {Python package version 0.1.0}
+}
+
+@article{raju2026geometric,
+    title={Geometric Stability: The Missing Axis of Representations},
+    author={Prashant C. Raju},
+    journal={arXiv},
+    year={2026}
 }
 ```
 
