@@ -1,4 +1,4 @@
-[![PyPI version](https://img.shields.io/pypi/v/shesha-geometry.svg)](https://pypi.org/project/shesha-geometry/)
+[![PyPI version](https://img.shields.io/pypi/v/shesha-geometry.svg?)](https://pypi.org/project/shesha-geometry/)
 [![DOI](https://zenodo.org/badge/1133185691.svg)](https://doi.org/10.5281/zenodo.18227453)
 <p align="center">
     <img src="https://i.imgur.com/oJ5YhBo.jpg" alt="Shesha Logo" width="300">
