@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "shesha-geometry"
-version = "0.1.2"
+version = "0.1.3"
 description = "Self-consistency metrics for representational stability analysis"
 readme = "README.md"
 license = {text = "MIT"}
@@ -34,6 +34,7 @@ keywords = [
     "model steering",
     "ai safety",
     "constitutional ai",
+    "interpretability",
     "perturbation analysis"
 ]
 

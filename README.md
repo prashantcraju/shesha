@@ -190,12 +190,12 @@ print(f"KLF1 Magnitude: {magnitude['KLF1']:.3f}")  # e.g., 2.40 (High = Strong)
 
 Explore `shesha` with these interactive notebooks:
 
-*  [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/prashantcraju/shesha/blob/main/tutorials/llm_embeddings_tutorial.ipynb) **LLM Embeddings**: **Geometric Stability:** Analyze embedding stability across layers and models using `feature_split`. 
-*  [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/prashantcraju/shesha/blob/main/tutorials/steering_vectors_tutorial.ipynb) **Steering Vectors**:  **Consistency Analysis:** Compute steering vectors from contrastive pairs and measure their effectiveness and consistency. 
-* [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/prashantcraju/shesha/blob/main/tutorials/vision_models_tutorial.ipynb) **Vision Models**:  **Architecture Comparison:** Compare geometric stability and class separability across ResNets, ViTs, and other vision architectures. 
-* [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/prashantcraju/shesha/blob/main/tutorials/drift_tutorial.ipynb) **Representational Drift**: **Perturbation Analysis:** Measure drift caused by Gaussian noise injection and LoRA fine-tuning using `rdm_drift`. 
-* [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/prashantcraju/shesha/blob/main/tutorials/training_drift_tutorial.ipynb) **Training Dynamics**: **Live Monitoring:** Track geometric stability during model training to detect representation collapse or divergence. 
-* [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/prashantcraju/shesha/blob/main/tutorials/crispr_tutorial.ipynb) **CRISPR (Bio)**: **Single-Cell Analysis:** Use `shesha.bio` to analyze stability and effect sizes in single-cell CRISPR perturbation experiments. 
+*  [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/prashantcraju/shesha/blob/main/tutorials/llm_embeddings_tutorial.ipynb) **LLM Embeddings** - **Geometric Stability:** Analyze embedding stability across layers and models using `feature_split`. 
+*  [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/prashantcraju/shesha/blob/main/tutorials/steering_vectors_tutorial.ipynb) **Steering Vectors** -  **Consistency Analysis:** Compute steering vectors from contrastive pairs and measure their effectiveness and consistency. 
+* [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/prashantcraju/shesha/blob/main/tutorials/vision_models_tutorial.ipynb) **Vision Models** -  **Architecture Comparison:** Compare geometric stability and class separability across ResNets, ViTs, and other vision architectures. 
+* [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/prashantcraju/shesha/blob/main/tutorials/drift_tutorial.ipynb) **Representational Drift** - **Perturbation Analysis:** Measure drift caused by Gaussian noise injection and LoRA fine-tuning using `rdm_drift`. 
+* [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/prashantcraju/shesha/blob/main/tutorials/training_drift_tutorial.ipynb) **Training Dynamics** - **Live Monitoring:** Track geometric stability during model training to detect representation collapse or divergence. 
+* [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/prashantcraju/shesha/blob/main/tutorials/crispr_tutorial.ipynb) **CRISPR (Bio)** - **Single-Cell Analysis:** Use `shesha.bio` to analyze stability and effect sizes in single-cell CRISPR perturbation experiments. 
 
 
 ## API Reference
@@ -350,13 +350,13 @@ Computes the magnitude (effect size) for every perturbation.
 If you use `shesha-geometry`, please cite:
 ```bibtex
 @software{shesha2026,
-    title = {Shesha: Self-consistency Metrics for Representational Stability},
-    author = {Prashant C. Raju},
-    year = {2026},
-    publisher = {Zenodo},
-    doi = {10.5281/zenodo.18227453},
-    url = {https://doi.org/10.5281/zenodo.18227453},
-    copyright = {MIT License}
+  title = {Shesha: Self-consistency Metrics for Representational Stability},
+  author = {Raju, Prashant C.},
+  year = {2026},
+  publisher = {Zenodo},
+  doi = {10.5281/zenodo.18227453},
+  url = {https://doi.org/10.5281/zenodo.18227453},
+  copyright = {MIT License}
 }
 
 @article{raju2026geometric,
