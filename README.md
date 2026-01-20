@@ -1,4 +1,4 @@
-[![PyPI version](https://img.shields.io/pypi/v/shesha-geometry.svg?)](https://pypi.org/project/shesha-geometry/)
+[![PyPI version](https://img.shields.io/pypi/v/shesha-geometry.svg?cache=bust)](https://pypi.org/project/shesha-geometry/)
 [![DOI](https://zenodo.org/badge/1133185691.svg)](https://doi.org/10.5281/zenodo.18227453)
 <p align="center">
     <img src="https://i.imgur.com/oJ5YhBo.jpg" alt="Shesha Logo" width="300">
@@ -360,10 +360,10 @@ If you use `shesha-geometry`, please cite:
 }
 
 @article{raju2026geometric,
-  title={Geometric Stability: The Missing Axis of Representations},
-  author={Raju, Prashant C.},
-  journal={arXiv preprint arXiv:2601.09173},
-  year={2026}
+  title = {Geometric Stability: The Missing Axis of Representations},
+  author = {Raju, Prashant C.},
+  journal = {arXiv preprint arXiv:2601.09173},
+  year = {2026}
 }
 ```
 
