@@ -350,7 +350,7 @@ Computes the magnitude (effect size) for every perturbation.
 If you use `shesha-geometry`, please cite:
 ```bibtex
 @software{shesha2026,
-  title = {Shesha: Self-consistency Metrics for Representational Stability},
+  title = {Shesha: Self-Consistency Metrics for Representational Stability},
   author = {Raju, Prashant C.},
   year = {2026},
   publisher = {Zenodo},

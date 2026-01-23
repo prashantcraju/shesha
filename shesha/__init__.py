@@ -42,7 +42,7 @@ from .core import (
 
 from . import bio
 
-__version__ = "0.1.31"
+__version__ = "0.1.32"
 __author__ = "Prashant Raju"
 
 __all__ = [
