@@ -188,7 +188,8 @@ print(f"KLF1 Magnitude: {magnitude['KLF1']:.3f}")  # e.g., 2.40 (High = Strong)
 
 ## Tutorials
 
-Explore `shesha` with these interactive notebooks:
+Explore `shesha` with these interactive notebooks (each takes < 5 minutes to run):
+
 
 *  [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/prashantcraju/shesha/blob/main/tutorials/llm_embeddings_tutorial.ipynb) **LLM Embeddings** - **Geometric Stability:** Analyze embedding stability across layers and models using `feature_split`. 
 *  [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/prashantcraju/shesha/blob/main/tutorials/steering_vectors_tutorial.ipynb) **Steering Vectors** -  **Consistency Analysis:** Compute steering vectors from contrastive pairs and measure their effectiveness and consistency. 
@@ -353,7 +354,7 @@ If you use `shesha-geometry`, please cite:
   title = {Shesha: Self-Consistency Metrics for Representational Stability},
   author = {Raju, Prashant C.},
   year = {2026},
-  publisher = {Zenodo},
+  howpublished = {Zenodo},
   doi = {10.5281/zenodo.18227453},
   url = {https://doi.org/10.5281/zenodo.18227453},
   copyright = {MIT License}
