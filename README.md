@@ -1,5 +1,5 @@
 [![PyPI version](https://img.shields.io/pypi/v/shesha-geometry.svg?cache=bust)](https://pypi.org/project/shesha-geometry/)
-[![Tests](https://github.com/prashantcraju/shesha/workflows/Tests/badge.svg)](https://github.com/prashantcraju/shesha/actions)
+[![Tests](https://github.com/prashantcraju/shesha/actions/workflows/test.yml/badge.svg?branch=main)](https://github.com/prashantcraju/shesha/actions/workflows/test.yml)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.18227453.svg)](https://doi.org/10.5281/zenodo.18227453)
 [![Socket Badge](https://badge.socket.dev/pypi/package/shesha-geometry/0.1.32?artifact_id=tar-gz)](https://badge.socket.dev/pypi/package/shesha-geometry/0.1.32?artifact_id=tar-gz)
 <p align="center">
