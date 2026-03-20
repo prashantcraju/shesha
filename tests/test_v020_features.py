@@ -12,6 +12,17 @@ import shesha
 import shesha.sim as sim
 import shesha.bio as bio
 
+try:
+    from sklearn.neighbors import NearestNeighbors  # noqa: F401
+    SKLEARN_AVAILABLE = True
+except ImportError:
+    SKLEARN_AVAILABLE = False
+
+requires_sklearn = pytest.mark.skipif(
+    not SKLEARN_AVAILABLE,
+    reason="scikit-learn not installed (pip install shesha-geometry[bio])",
+)
+
 
 # ---------------------------------------------------------------------------
 # Fixtures
@@ -210,6 +221,7 @@ class TestPerturbationStabilityMethodDispatch:
         )
         assert abs(s_dispatch - s_standalone) < 1e-10
 
+    @requires_sklearn
     def test_knn_dispatch_matches_standalone(self, ctrl_pert_coherent):
         """method='knn' should equal perturbation_stability_knn with same metric."""
         X_ctrl, X_pert = ctrl_pert_coherent
@@ -229,6 +241,7 @@ class TestPerturbationStabilityMethodDispatch:
         with pytest.raises(ValueError, match="Unknown method"):
             bio.perturbation_stability(X_ctrl, X_pert, method="invalid")
 
+    @requires_sklearn
     def test_coherent_high_all_methods(self, ctrl_pert_coherent):
         """All methods should return a high score for a coherent perturbation."""
         X_ctrl, X_pert = ctrl_pert_coherent
@@ -238,6 +251,7 @@ class TestPerturbationStabilityMethodDispatch:
             )
             assert score > 0.4, f"method='{method}' gave low score: {score:.3f}"
 
+    @requires_sklearn
     def test_incoherent_lower_than_coherent(self, ctrl_pert_coherent, ctrl_pert_random):
         """Coherent perturbation should score higher than random for all methods."""
         X_ctrl, X_pert_coh = ctrl_pert_coherent

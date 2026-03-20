@@ -61,11 +61,15 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+bio = [
+    "scikit-learn>=1.0",
+]
 dev = [
     "pytest>=7.0",
     "pytest-cov",
     "black",
     "ruff",
+    "scikit-learn>=1.0",
 ]
 
 [project.urls]

@@ -11,15 +11,10 @@ Expected behavior:
 
 import numpy as np
 import pandas as pd
+import pytest
 
-# Check for required dependencies
-try:
-    import pertpy as pt
-    import scanpy as sc
-except ImportError:
-    print("This test requires pertpy and scanpy.")
-    print("Install with: pip install pertpy scanpy")
-    exit(1)
+pt = pytest.importorskip("pertpy", reason="pertpy not installed (pip install pertpy)")
+sc = pytest.importorskip("scanpy", reason="scanpy not installed (pip install scanpy)")
 
 from shesha.bio import perturbation_stability, perturbation_effect_size
 

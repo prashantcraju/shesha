@@ -13,6 +13,12 @@ try:
 except ImportError:
     ANNDATA_AVAILABLE = False
 
+try:
+    from sklearn.neighbors import NearestNeighbors  # noqa: F401
+    SKLEARN_AVAILABLE = True
+except ImportError:
+    SKLEARN_AVAILABLE = False
+
 import shesha
 
 
@@ -77,6 +83,7 @@ def test_compute_stability_whitened_anndata():
 
 
 @pytest.mark.skipif(not ANNDATA_AVAILABLE, reason="anndata not installed")
+@pytest.mark.skipif(not SKLEARN_AVAILABLE, reason="scikit-learn not installed")
 def test_compute_stability_knn_anndata():
     """Test k-NN matched stability computation with AnnData."""
     np.random.seed(320)
@@ -129,6 +136,7 @@ def test_compute_stability_knn_anndata():
 
 
 @pytest.mark.skipif(not ANNDATA_AVAILABLE, reason="anndata not installed")
+@pytest.mark.skipif(not SKLEARN_AVAILABLE, reason="scikit-learn not installed")
 def test_anndata_with_sparse_matrix():
     """Test that sparse matrices are handled correctly."""
     try:
@@ -219,6 +227,7 @@ def test_anndata_with_layer():
 
 
 @pytest.mark.skipif(not ANNDATA_AVAILABLE, reason="anndata not installed")
+@pytest.mark.skipif(not SKLEARN_AVAILABLE, reason="scikit-learn not installed")
 def test_comparison_all_methods():
     """Compare all three stability computation methods on same data."""
     np.random.seed(320)

@@ -6,6 +6,12 @@ import numpy as np
 import pytest
 import shesha
 
+try:
+    from sklearn.neighbors import NearestNeighbors  # noqa: F401
+    SKLEARN_AVAILABLE = True
+except ImportError:
+    SKLEARN_AVAILABLE = False
+
 
 def test_class_separation_ratio():
     """Test class separation ratio metric."""
@@ -76,6 +82,7 @@ def test_perturbation_stability_whitened():
     print(f"[PASS] Whitened perturbation stability: {stability:.3f}")
 
 
+@pytest.mark.skipif(not SKLEARN_AVAILABLE, reason="scikit-learn not installed")
 def test_perturbation_stability_knn():
     """Test k-NN matched control perturbation stability."""
     np.random.seed(320)
