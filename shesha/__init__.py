@@ -33,6 +33,8 @@ from .core import (
     # Supervised variants
     variance_ratio,
     supervised_alignment,
+    class_separation_ratio,
+    lda_stability,
     # Drift metrics
     rdm_similarity,
     rdm_drift,
@@ -41,8 +43,9 @@ from .core import (
 )
 
 from . import bio
+from . import sim
 
-__version__ = "0.1.32"
+__version__ = "0.2.0"
 __author__ = "Prashant Raju"
 
 __all__ = [
@@ -52,8 +55,11 @@ __all__ = [
     "anchor_stability",
     "variance_ratio",
     "supervised_alignment",
+    "class_separation_ratio",
+    "lda_stability",
     "rdm_similarity",
     "rdm_drift",
     "compute_rdm",
     "bio",
+    "sim",
 ]

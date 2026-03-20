@@ -8,7 +8,11 @@ of high-dimensional representations.
 import numpy as np
 from scipy.stats import spearmanr, pearsonr
 from scipy.spatial.distance import pdist, cdist
-from typing import Optional, Literal, Union
+from typing import Optional, Union
+try:
+    from typing import Literal
+except ImportError:
+    from typing_extensions import Literal
 
 __all__ = [
     # Unsupervised variants
@@ -18,6 +22,8 @@ __all__ = [
     # Supervised variants
     "variance_ratio",
     "supervised_alignment",
+    "class_separation_ratio",
+    "lda_stability",
     # Drift metrics
     "rdm_similarity",
     "rdm_drift",
@@ -437,6 +443,234 @@ def supervised_alignment(
     
     rho, _ = spearmanr(model_rdm, ideal_rdm)
     return float(rho) if np.isfinite(rho) else np.nan
+
+
+def class_separation_ratio(
+    X: np.ndarray,
+    y: np.ndarray,
+    n_bootstrap: int = 50,
+    subsample_frac: float = 0.5,
+    metric: Literal["cosine", "euclidean"] = "euclidean",
+    seed: Optional[int] = None,
+) -> float:
+    """
+    Class Separation Ratio: ratio of between-class to within-class distances.
+    
+    Measures how well-separated classes are in the representation space.
+    Uses bootstrap subsampling for computational efficiency and stability.
+    Related to Fisher's discriminant ratio but operates in distance space.
+    
+    Parameters
+    ----------
+    X : np.ndarray
+        Data matrix of shape (n_samples, n_features).
+    y : np.ndarray
+        Class labels of shape (n_samples,).
+    n_bootstrap : int
+        Number of bootstrap iterations for stability.
+    subsample_frac : float
+        Fraction of samples to use per bootstrap (0.0-1.0).
+    metric : str
+        Distance metric: 'cosine' or 'euclidean'.
+    seed : int, optional
+        Random seed for reproducibility.
+    
+    Returns
+    -------
+    float
+        Mean separation ratio across bootstrap samples. Higher values indicate
+        better class separation. Range: [0, inf), typically [0.5, 5.0].
+    
+    Examples
+    --------
+    >>> # Well-separated classes
+    >>> X = np.vstack([np.random.randn(100, 10), 
+    ...                np.random.randn(100, 10) + 5])
+    >>> y = np.array([0]*100 + [1]*100)
+    >>> ratio = class_separation_ratio(X, y)
+    >>> print(f"Separation: {ratio:.2f}")  # High value
+    
+    Notes
+    -----
+    Higher values indicate representations where same-class samples are closer
+    together than different-class samples, suggesting good discriminability.
+    """
+    X = np.asarray(X, dtype=np.float64)
+    y = np.asarray(y)
+    
+    if len(np.unique(y)) < 2:
+        return np.nan
+    
+    rng = np.random.default_rng(seed)
+    
+    if metric == "cosine":
+        # Normalize for cosine distance
+        norms = np.linalg.norm(X, axis=1, keepdims=True)
+        X = X / np.maximum(norms, EPS)
+    
+    ratios = []
+    n_samples = int(len(X) * subsample_frac)
+    
+    for _ in range(n_bootstrap):
+        # Subsample
+        idx = rng.choice(len(X), n_samples, replace=False)
+        X_sub, y_sub = X[idx], y[idx]
+        
+        # Skip if any class is missing
+        if len(np.unique(y_sub)) < 2:
+            continue
+        
+        # Compute pairwise distances
+        dists = cdist(X_sub, X_sub, metric='euclidean' if metric == 'euclidean' else 'cosine')
+        
+        # Within-class distances (same label)
+        within_dists = []
+        for label in np.unique(y_sub):
+            mask = y_sub == label
+            if np.sum(mask) < 2:
+                continue
+            class_dists = dists[mask][:, mask]
+            # Upper triangle only (avoid diagonal)
+            within_dists.extend(class_dists[np.triu_indices_from(class_dists, k=1)])
+        
+        # Between-class distances (different labels)
+        between_dists = []
+        for i, label_i in enumerate(np.unique(y_sub)):
+            for label_j in np.unique(y_sub):
+                if label_i >= label_j:
+                    continue
+                mask_i = y_sub == label_i
+                mask_j = y_sub == label_j
+                between_dists.extend(dists[mask_i][:, mask_j].flatten())
+        
+        if len(within_dists) == 0 or len(between_dists) == 0:
+            continue
+        
+        mean_between = np.mean(between_dists)
+        mean_within = np.mean(within_dists)
+        
+        if mean_within > EPS:
+            ratios.append(mean_between / mean_within)
+    
+    return float(np.mean(ratios)) if len(ratios) > 0 else np.nan
+
+
+def lda_stability(
+    X: np.ndarray,
+    y: np.ndarray,
+    n_bootstrap: int = 50,
+    subsample_frac: float = 0.5,
+    seed: Optional[int] = None,
+) -> float:
+    """
+    LDA Subspace Stability: consistency of linear discriminant direction.
+    
+    Measures whether the optimal linear decision boundary is robust to sampling
+    variation. Computes LDA on full dataset and bootstrapped subsamples, then
+    measures alignment of discriminant vectors.
+    
+    Parameters
+    ----------
+    X : np.ndarray
+        Data matrix of shape (n_samples, n_features).
+    y : np.ndarray
+        Binary class labels of shape (n_samples,). Must have exactly 2 classes.
+    n_bootstrap : int
+        Number of bootstrap iterations.
+    subsample_frac : float
+        Fraction of samples to use per bootstrap (0.0-1.0).
+    seed : int, optional
+        Random seed for reproducibility.
+    
+    Returns
+    -------
+    float
+        Mean absolute cosine similarity between full and bootstrap discriminant
+        vectors. Range: [0, 1]. Values near 1 indicate stable discriminant subspace.
+    
+    Examples
+    --------
+    >>> # Create well-separated binary classification data
+    >>> X = np.vstack([np.random.randn(100, 10),
+    ...                np.random.randn(100, 10) + 3])
+    >>> y = np.array([0]*100 + [1]*100)
+    >>> stability = lda_stability(X, y)
+    >>> print(f"LDA Stability: {stability:.3f}")  # Should be high
+    
+    Notes
+    -----
+    Low values suggest the discriminant subspace is unstable, potentially
+    indicating overfitting to source domain structure. This metric is
+    particularly useful for predicting transfer learning performance.
+    
+    Only works for binary classification. For multi-class, consider using
+    class_separation_ratio instead.
+    """
+    X = np.asarray(X, dtype=np.float64)
+    y = np.asarray(y)
+    
+    # Check for binary classification
+    classes = np.unique(y)
+    if len(classes) != 2:
+        raise ValueError(f"LDA stability requires exactly 2 classes, got {len(classes)}")
+    
+    rng = np.random.default_rng(seed)
+    
+    # Compute full discriminant vector
+    try:
+        # Compute class means
+        mean_0 = np.mean(X[y == classes[0]], axis=0)
+        mean_1 = np.mean(X[y == classes[1]], axis=0)
+        
+        # Compute pooled within-class covariance
+        X_0_centered = X[y == classes[0]] - mean_0
+        X_1_centered = X[y == classes[1]] - mean_1
+        S_w = (X_0_centered.T @ X_0_centered + X_1_centered.T @ X_1_centered) / len(X)
+        
+        # Add regularization for numerical stability
+        S_w += np.eye(X.shape[1]) * 1e-6
+        
+        # Compute discriminant direction: S_w^{-1} (μ_1 - μ_0)
+        mean_diff = mean_1 - mean_0
+        w_full = np.linalg.solve(S_w, mean_diff)
+        w_full = w_full / (np.linalg.norm(w_full) + EPS)
+    except np.linalg.LinAlgError:
+        return np.nan
+    
+    # Bootstrap
+    similarities = []
+    n_samples = int(len(X) * subsample_frac)
+    
+    for _ in range(n_bootstrap):
+        # Subsample with stratification
+        idx_0 = rng.choice(np.where(y == classes[0])[0], n_samples // 2, replace=True)
+        idx_1 = rng.choice(np.where(y == classes[1])[0], n_samples // 2, replace=True)
+        idx = np.concatenate([idx_0, idx_1])
+        
+        X_boot, y_boot = X[idx], y[idx]
+        
+        try:
+            # Compute bootstrap discriminant
+            mean_0_boot = np.mean(X_boot[y_boot == classes[0]], axis=0)
+            mean_1_boot = np.mean(X_boot[y_boot == classes[1]], axis=0)
+            
+            X_0_boot_centered = X_boot[y_boot == classes[0]] - mean_0_boot
+            X_1_boot_centered = X_boot[y_boot == classes[1]] - mean_1_boot
+            S_w_boot = (X_0_boot_centered.T @ X_0_boot_centered + 
+                       X_1_boot_centered.T @ X_1_boot_centered) / len(X_boot)
+            S_w_boot += np.eye(X_boot.shape[1]) * 1e-6
+            
+            mean_diff_boot = mean_1_boot - mean_0_boot
+            w_boot = np.linalg.solve(S_w_boot, mean_diff_boot)
+            w_boot = w_boot / (np.linalg.norm(w_boot) + EPS)
+            
+            # Absolute cosine similarity (sign ambiguity in discriminant)
+            sim = np.abs(np.dot(w_full, w_boot))
+            similarities.append(sim)
+        except np.linalg.LinAlgError:
+            continue
+    
+    return float(np.mean(similarities)) if len(similarities) > 0 else np.nan
 
 
 # =============================================================================

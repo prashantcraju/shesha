@@ -22,3 +22,7 @@ htmlcov/
 # OS
 .DS_Store
 Thumbs.db
+
+# Documentation (work-in-progress)
+ANNDATA_INTEGRATION.md
+SIMILARITY_MODULE.md

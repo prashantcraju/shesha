@@ -1,5 +1,7 @@
 [![PyPI version](https://img.shields.io/pypi/v/shesha-geometry.svg?cache=bust)](https://pypi.org/project/shesha-geometry/)
-[![DOI](https://zenodo.org/badge/1133185691.svg)](https://doi.org/10.5281/zenodo.18227453)
+[![Tests](https://github.com/prashantcraju/shesha/workflows/Tests/badge.svg)](https://github.com/prashantcraju/shesha/actions)
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.18227453.svg)](https://doi.org/10.5281/zenodo.18227453)
+[![Socket Badge](https://badge.socket.dev/pypi/package/shesha-geometry/0.1.32?artifact_id=tar-gz)](https://badge.socket.dev/pypi/package/shesha-geometry/0.1.32?artifact_id=tar-gz)
 <p align="center">
     <img src="https://i.imgur.com/oJ5YhBo.jpg" alt="Shesha Logo" width="300">
 </p>
@@ -77,6 +79,14 @@ Between-class / total variance. Use for quick separability check.
 
 Correlation with ideal label RDM. Use for task alignment.
 
+**`class_separation_ratio(X, y, n_bootstrap=50, subsample_frac=0.5)`**
+
+Between-class to within-class distance ratio.
+
+**`lda_stability(X, y, n_bootstrap=50, subsample_frac=0.5)`**
+
+Consistency of discriminant direction under resampling.
+
 ### Drift Metrics (comparing two representations)
 
 **`rdm_similarity(X, Y, method='spearman', metric='cosine')`**
@@ -86,6 +96,27 @@ RDM correlation between two representations. Use for comparing models or trackin
 **`rdm_drift(X, Y, method='spearman', metric='cosine')`**
 
 Representational drift (1 - similarity). Use for quantifying how much geometry has changed.
+
+### Similarity Metrics (`shesha.sim`)
+
+**`cka(X, Y, debiased=False)`**
+
+Centered Kernel Alignment - the most popular similarity metric for neural representations. Invariant to orthogonal transformations.
+
+```python
+import shesha.sim as sim
+
+# Compare two model layers
+similarity = sim.cka(model_layer_12, model_layer_18)
+```
+
+**`procrustes_similarity(X, Y, center=True, scale=True)`**
+
+Orthogonal Procrustes alignment. More sensitive to outliers than CKA (6x more false alarms in stable regimes).
+
+**`rdm_similarity(X, Y, metric='cosine', method='spearman')`**
+
+RSA-style RDM correlation. Rank-based and robust to transformations.
 
 ## Examples
 
@@ -267,6 +298,31 @@ Spearman correlation between model RDM and ideal label-based RDM.
 
 **Returns:** float in [-1, 1], higher = better task alignment
 
+### `shesha.class_separation_ratio(X, y, n_bootstrap=50, subsample_frac=0.5, metric='euclidean', seed=None)`
+
+Ratio of between-class to within-class distances with bootstrap subsampling.
+
+**Parameters:**
+- `X` - array of shape (n_samples, n_features)
+- `y` - array of shape (n_samples,) with class labels
+- `n_bootstrap` - number of bootstrap iterations
+- `subsample_frac` - fraction of samples per bootstrap
+- `metric` - 'cosine' or 'euclidean'
+
+**Returns:** float > 0, higher = better class separation. Typically in [0.5, 5.0].
+
+### `shesha.lda_stability(X, y, n_bootstrap=50, subsample_frac=0.5, seed=None)`
+
+Consistency of LDA discriminant direction under resampling. Binary classification only.
+
+**Parameters:**
+- `X` - array of shape (n_samples, n_features)
+- `y` - array of shape (n_samples,) with **binary** class labels (exactly 2 classes)
+- `n_bootstrap` - number of bootstrap iterations
+- `subsample_frac` - fraction of samples per bootstrap
+
+**Returns:** float in [0, 1], higher = more stable discriminant. Predicts steerability (ρ=0.89-0.96).
+
 ### `shesha.rdm_similarity(X, Y, method='spearman', metric='cosine')`
 
 Computes RDM correlation between two representations. Useful for comparing models, tracking drift during training, or measuring the effect of interventions.
@@ -295,14 +351,20 @@ Computes representational drift as 1 - rdm_similarity. Useful for quantifying ho
 
 The `shesha.bio` module provides metrics for single-cell perturbation experiments (e.g., Perturb-seq, CRISPR screens).
 
-### `shesha.bio.perturbation_stability(X_control, X_perturbed, metric='cosine', seed=None, max_samples=1000)`
+### `shesha.bio.perturbation_stability(X_control, X_perturbed, method='standard', metric='cosine', k=50, regularization=1e-6, seed=None, max_samples=1000)`
 
-Measures consistency of perturbation effects across samples. High values indicate coherent, reproducible perturbation effects.
+Unified interface for measuring consistency of perturbation effects across samples.
 
 **Parameters:**
 - `X_control` - array of shape (n_control, n_features), control population
 - `X_perturbed` - array of shape (n_perturbed, n_features), perturbed population
-- `metric` - 'cosine' (default) or 'euclidean'
+- `method` - 'standard' (default), 'whitened', or 'knn'
+  - `'standard'`: Global control centroid (fastest)
+  - `'whitened'`: Mahalanobis-scaled for batch effects
+  - `'knn'`: Local k-NN matched controls for heterogeneity
+- `metric` - 'cosine' (default) or 'euclidean' (for standard/knn methods)
+- `k` - number of neighbors (only for method='knn')
+- `regularization` - covariance regularization (only for method='whitened')
 - `seed` - random seed for reproducibility
 - `max_samples` - subsample perturbed population if exceeded
 
@@ -322,16 +384,17 @@ Cohen's d-like effect size measuring magnitude of perturbation shift.
 
 For single-cell analysis, Shesha provides high-level wrappers that work directly with `AnnData` objects.
 
-### `shesha.bio.compute_stability(adata, perturbation_key, control_label, layer=None, metric='cosine')`
+### `shesha.bio.compute_stability(adata, perturbation_key, control_label, layer=None, method='standard', **kwargs)`
 
-Computes the geometric stability for every perturbation in the dataset.
+Computes the geometric stability for every perturbation in the dataset. Unified interface supporting multiple methods.
 
 **Parameters:**
 - `adata` - AnnData object.
 - `perturbation_key` - Column in `adata.obs` identifying the perturbation (e.g., `'guide_id'`).
 - `control_label` - The label in that column representing control cells (e.g., `'NT'`).
 - `layer` - (Optional) Layer to use (e.g., `'pca'`). If None, uses `.X`.
-- `metric` - `'cosine'` (default) or `'euclidean'`.
+- `method` - `'standard'` (default), `'whitened'`, or `'knn'`.
+- `**kwargs` - Additional arguments: `k=50` for knn, `regularization=1e-6` for whitened, `metric='cosine'` for standard/knn.
 
 **Returns:** Dictionary `{perturbation_name: stability_score}`.
 
@@ -344,6 +407,71 @@ Computes the magnitude (effect size) for every perturbation.
 - `metric` - `'euclidean'` (default, raw distance) or `'cohen'` (standardized effect size).
 
 **Returns:** Dictionary `{perturbation_name: magnitude_score}`.
+
+### Enhanced Perturbation Methods
+
+**`shesha.bio.perturbation_stability(X_control, X_perturbed, method='standard', ...)`**
+
+Unified interface with three methods for computing perturbation stability:
+- `method='standard'` - Global control centroid (default, fastest)
+- `method='whitened'` - Mahalanobis-scaled for batch effects
+- `method='knn'` - k-NN matched for heterogeneous controls
+
+**`shesha.bio.compute_stability(adata, perturbation_key, method='standard', ...)`**
+
+AnnData wrapper supporting all three methods.
+
+```python
+import shesha.bio as bio
+
+# Standard stability
+stability = bio.compute_stability(adata, "perturbation", method="standard")
+
+# Whitened (for batch effects)
+stability_white = bio.compute_stability(adata, "perturbation", method="whitened")
+
+# k-NN (for heterogeneous controls)
+stability_knn = bio.compute_stability(adata, "perturbation", method="knn", k=50)
+
+# Low-level API also supports method parameter
+from shesha.bio import perturbation_stability
+score = perturbation_stability(X_ctrl, X_pert, method="whitened")
+```
+
+**Backward compatibility:** Old function names (`perturbation_stability_whitened`, `perturbation_stability_knn`, `compute_stability_whitened`, `compute_stability_knn`) still work as convenience wrappers.
+
+
+## Testing
+
+Shesha has a comprehensive test suite to ensure scientific reliability and correctness.
+
+### Running Tests Locally
+
+Install development dependencies:
+
+```bash
+pip install -e .[dev]
+```
+
+Run all tests:
+
+```bash
+pytest tests/
+```
+
+Run with coverage report:
+
+```bash
+pytest tests/ --cov=shesha --cov-report=term
+```
+
+### Continuous Integration
+
+All tests are automatically run on:
+- **Multiple Python versions:** 3.8, 3.9, 3.10, 3.11, 3.12
+- **Multiple operating systems:** Ubuntu, macOS, Windows
+
+See the [Tests workflow](https://github.com/prashantcraju/shesha/actions) for current status.
 
 
 ## Citation

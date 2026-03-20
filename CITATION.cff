@@ -1,0 +1,32 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+type: software
+title: "Shesha: Self-Consistency Metrics for Representational Stability Analysis"
+authors:
+  - family-names: "Raju"
+    given-names: "Prashant C."
+    orcid: "https://orcid.org/0000-0003-3778-4788"
+version: 0.1.4
+doi: 10.5281/zenodo.18227453
+date-released: 2026-01-12
+url: "https://github.com/prashantcraju/shesha"
+repository-code: "https://github.com/prashantcraju/shesha"
+keywords:
+  - geometric stability
+  - representation learning
+  - machine learning
+  - single-cell biology
+  - interpretability
+  - CRISPR
+  - perturbation analysis
+license: MIT
+preferred-citation:
+  type: article
+  authors:
+    - family-names: "Raju"
+      given-names: "Prashant C."
+      orcid: "https://orcid.org/0000-0003-3778-4788"
+  title: "Geometric Stability: The Missing Axis of Representations"
+  year: 2026
+  journal: "arXiv preprint"
+  url: "https://arxiv.org/abs/2601.09173"

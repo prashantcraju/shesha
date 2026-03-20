@@ -13,7 +13,7 @@ authors:
 affiliations:
   - name: Independent Researcher
     index: 1
-date: 9 February 2026
+date: 15 March 2026
 bibliography: paper.bib
 ---
 
@@ -69,13 +69,13 @@ This distinction is mechanistically grounded: similarity metrics often collapse 
 
 ## Critical Gaps Addressed by Shesha
 
-`Shesha` addresses three key challenges in current research workflows:
+`Shesha` addresses three key tooling challenges in current research workflows:
 
-1. **Safety and Drift Monitoring**: Stability serves as a "geometric canary." In instruction-tuned models like Llama [@Touvron2023LLaMAOA], `Shesha` detects structural drift nearly 2x more sensitively than CKA (up to 5.23x) [@raju2026geometric], providing an earlier warning of functional degradation before task failure occurs. Unlike rigid distance metrics such as Procrustes [@Schnemann1966], `Shesha` filters out non-functional noise, resulting in 6x fewer false alarms in stable regimes [@raju2026geometric].
+1. **Safety and Drift Monitoring**: provides a robust, noise-filtered metric for monitoring structural drift in large language models (LLMs) [@Touvron2023LLaMAOA]. By filtering out non-functional variance, the software acts as a highly sensitive "geometric canary" that overcomes the limitations of rigid distance metrics like Procrustes [@Schnemann1966], allowing researchers to programmatically detect early functional degradation.
 
-2. **The Geometric Tax in Vision**: In large-scale vision benchmarks, `Shesha` revealed a fundamental trade-off between task transferability and internal geometric robustness. State-of-the-art models like DINOv2 [@oquab2024dinov] often rank first in extrinsic similarity and downstream performance but last in intrinsic geometric stability, a phenomenon termed the "geometric tax" [@raju2026geometric]. This suggests that optimizing solely for rich, adaptable features can inadvertently collapse the fine-grained manifold structure required for predictable, consistent behavior.
+2. **Large-Scale Vision Benchmarks**: Evaluating the intrinsic geometric robustness of state-of-the-art vision models (e.g., DINOv2 [@oquab2024dinov]) requires processing massive, high-dimensional datasets. `Shesha` is architected to scale efficiently, enabling researchers to systematically quantify the relationship between task transferability and internal manifold consistency across extensive model suites.
 
-3. **Biological Coherence**: Beyond machine learning, `Shesha` enables the analysis of single-cell perturbation data (e.g., CRISPR screens). It quantifies the structural coherence of transcriptomic shifts, where high stability scores identify perturbations that induce reproducible state-space trajectories rather than stochastic noise.
+3. **Biological Coherence**: Beyond machine learning, the `shesha.bio` module enables the native processing of single-cell perturbation data (e.g., CRISPR screens). The software quantifies the structural coherence of transcriptomic shifts, equipping biologists with an accessible tool to isolate reproducible state-space trajectories from stochastic noise.
 
 `Shesha` provides researchers with a unified API to compute these metrics across diverse domains, including language, vision, and biology. The package includes six interactive tutorials (each < 5 minutes to run) covering LLM embeddings, steering vectors, vision models, representational drift, training dynamics, and single-cell CRISPR analysis.
 
@@ -95,13 +95,14 @@ Existing tools for representational analysis, such as `rsatoolbox` [@vandenBosch
 
 - **Ecosystem Integration**: The software relies on the standard scientific Python stack (`NumPy` [@harris2020array], `SciPy` [@2020SciPy-NMeth], `scikit-learn` [@scikit-learn]) and provides seamless integration with the bioinformatics ecosystem. The `shesha.bio` module works natively with `AnnData` [@Virshup2023] [@Virshup2024] objects and is compatible with `scanpy` [@Wolf2018] and `pertpy` [@Heumos2025] workflows, enabling researchers to incorporate stability analysis into existing single-cell pipelines without additional data preprocessing.
 
-# Research Impact
+# Applications
 
-`Shesha` has demonstrated impact across multiple research domains. In computer vision, the framework identified a fundamental "geometric tax" [@raju2026geometric]: a trade-off where state-of-the-art models like DINOv2 achieve high task transferability but exhibit lower geometric stability. This finding suggests that optimizing solely for rich feature representations may come at the cost of manifold consistency required for reliable, predictable behavior.
+`Shesha` is designed to be highly adaptable across diverse research domains. In computer vision and natural language processing, researchers utilize `Shesha`'s core unsupervised metrics to evaluate manifold consistency across varied model architectures. The framework enables the systematic comparison of how different training paradigms impact the internal geometric robustness of a model, independently of its performance on external similarity benchmarks.
 
-In computational biology, `Shesha` has been applied to the analysis of the Norman et al. (2019) CRISPRa datase [@norman2019exploring], where it successfully identified stable genetic regulators such as *KLF1* based on their manifold consistency scores. These findings demonstrate the framework's utility for distinguishing reproducible biological perturbations from stochastic transcriptomic noise.
+In computational biology, the `shesha.bio` module natively interfaces with AnnData objects to streamline the analysis of large-scale single-cell datasets, such as the Norman et al. (2019) CRISPRa dataset [@norman2019exploring]. The framework provides specialized functions to evaluate the stability of genetic regulators, allowing researchers to programmatically distinguish reproducible biological perturbations from stochastic transcriptomic noise without requiring complex, out-of-ecosystem preprocessing pipelines.
 
-The package is publicly available on PyPI as `shesha-geometry`, has been archived on Zenodo for long-term preservation, and features comprehensive documentation. Its focus on accessibility and usability is evidenced by six interactive Colab tutorials that allow researchers to explore LLM embeddings, steering vectors, vision model architectures, representational drift, training dynamics, and single-cell CRISPR analysis. All executable in under 5 minutes each.
+The package is publicly available on PyPI as `shesha-geometry`, has been archived on Zenodo for long-term preservation, and features comprehensive documentation. Its focus on accessibility and usability is evidenced by six interactive Colab tutorials that allow researchers to explore LLM embeddings, steering vectors, vision model architectures, representational drift, training dynamics, and single-cell CRISPR analysis. All tutorials are designed to be executable in under 5 minutes each.
+
 
 # AI Usage Disclosure
 
