@@ -191,13 +191,12 @@ def test_anndata_with_layer():
     
     n_cells = 200
     n_genes = 100
-    n_pcs = 30
     
     # Raw counts
     X_raw = np.random.poisson(10, size=(n_cells, n_genes)).astype(float)
     
-    # PCA representation
-    X_pca = np.random.randn(n_cells, n_pcs)
+    # Layers must match adata.X shape — use n_genes, not n_pcs
+    X_pca = np.random.randn(n_cells, n_genes)
     
     # Create labels
     pert_labels = ["control"] * 100 + ["crispr_a"] * 50 + ["crispr_b"] * 50
