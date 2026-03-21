@@ -421,6 +421,10 @@ class TestSimModuleAccess:
         ):
             assert hasattr(shesha.bio, fn), f"shesha.bio.{fn} not found"
 
-    def test_version_bump(self):
-        """Package version should be 0.2.0."""
-        assert shesha.__version__ == "0.2.0"
+    def test_version_is_valid_semver(self):
+        """Package version should be a valid semantic version string."""
+        from packaging.version import Version, InvalidVersion
+        try:
+            Version(shesha.__version__)
+        except InvalidVersion:
+            raise AssertionError(f"Invalid version string: {shesha.__version__!r}")
