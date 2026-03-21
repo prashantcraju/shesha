@@ -89,7 +89,7 @@ Existing tools for representational analysis, such as `rsatoolbox` [@vandenBosch
 
 `Shesha` is built around a unified API that balances computational performance with research flexibility:
 
-- **Modular Architecture**: The package is organized into three main components: core unsupervised metrics (e.g., `feature_split`, `rdm_drift`), supervised alignment methods (e.g., `anchored_stability`), and a specialized biological perturbation module (`shesha.bio`) for single-cell analysis.
+- **Modular Architecture**: The package is organized into three main components: core unsupervised metrics (e.g., `feature_split`, `rdm_drift`), supervised alignment methods (e.g., `anchor_stability`), and a specialized biological perturbation module (`shesha.bio`) for single-cell analysis.
 
 - **Computational Efficiency**: Core representational dissimilarity matrix (RDM) operations are optimized for high-dimensional arrays using vectorized NumPy and SciPy routines. To ensure $O(n^2)$ pairwise distance calculations remain tractable for large datasets, the package implements intelligent subsampling strategies (via the `max_samples` parameter) that preserve statistical properties while reducing computational burden.
 

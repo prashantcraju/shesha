@@ -4,9 +4,9 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "shesha-geometry"
-version = "0.2.01"
+version = "0.2.1"
 description = "Self-consistency metrics for representational stability analysis"
-readme = "README.md"
+readme = "README_PYPI.md"
 license = {text = "MIT"}
 authors = [
     {name = "Prashant Raju", email = "rajuprashant@gmail.com"}
