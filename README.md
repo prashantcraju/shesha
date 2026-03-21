@@ -1,7 +1,7 @@
 [![PyPI version](https://img.shields.io/pypi/v/shesha-geometry.svg?cache=bust)](https://pypi.org/project/shesha-geometry/)
 [![Tests](https://github.com/prashantcraju/shesha/actions/workflows/test.yml/badge.svg?branch=main)](https://github.com/prashantcraju/shesha/actions/workflows/test.yml)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.18227453.svg)](https://doi.org/10.5281/zenodo.18227453)
-[![Socket Badge](https://badge.socket.dev/pypi/package/shesha-geometry/0.1.32?artifact_id=tar-gz)](https://badge.socket.dev/pypi/package/shesha-geometry/0.1.32?artifact_id=tar-gz)
+[![Socket](https://img.shields.io/badge/Socket-100-brightgreen?logo=socket&logoColor=white)](https://socket.dev/pypi/package/shesha-geometry)
 <p align="center">
     <img src="https://i.imgur.com/oJ5YhBo.jpg" alt="Shesha Logo" width="300">
 </p>
