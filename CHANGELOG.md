@@ -2,6 +2,12 @@
 
 All notable changes to the `shesha` package will be documented in this file.
 
+## [0.2.0] - 2026-03-20
+Added the `shesha.sim` similarity module (CKA, debiased CKA, Procrustes, RDM) and two new supervised metrics in `shesha.core` (`class_separation_ratio`, `lda_stability`). Extended `shesha.bio` perturbation stability with whitened and k-NN matched methods.
+
+### Testing
+Expanded the test suite with four new test files covering all v0.2.0 features: `test_new_features.py` (supervised metrics and bio methods), `test_similarity.py` (full `shesha.sim` coverage), `test_anndata_integration.py` (AnnData workflows for all three stability methods), and `test_v020_features.py` (edge cases, error handling, and dispatch consistency). CI now runs across Python 3.8–3.12 on Ubuntu, macOS, and Windows via GitHub Actions, with a separate coverage-reporting job.
+
 ## [0.1.4] - 2026-02-09
 
 ### Added
