@@ -199,6 +199,25 @@ def _perturbation_stability_standard(
     else:
         raise ValueError(f"Unknown metric: {metric}. Use 'cosine' or 'euclidean'.")
 
+def _get_array(adata: "AnnData", mask, layer: Optional[str]) -> np.ndarray:
+    """Extract a dense numpy array from an AnnData slice."""
+    X = adata[mask].layers[layer] if layer else adata[mask].X
+    if hasattr(X, "toarray"):
+        X = X.toarray()
+    return X
+
+
+def _iter_perturbations(adata, perturbation_key, control_label, layer):
+    """Yield (perturbation_name, X_ctrl, X_pert) for each non-control perturbation."""
+    ctrl_mask = adata.obs[perturbation_key] == control_label
+    X_ctrl = _get_array(adata, ctrl_mask, layer)
+    for pert in adata.obs[perturbation_key].unique():
+        if pert == control_label:
+            continue
+        pert_mask = adata.obs[perturbation_key] == pert
+        yield pert, X_ctrl, _get_array(adata, pert_mask, layer)
+
+
 def compute_stability(
     adata: "AnnData",
     perturbation_key: str,
@@ -248,38 +267,12 @@ def compute_stability(
     """
     if AnnData is None or not isinstance(adata, AnnData):
         raise ImportError("anndata is required for this function.")
-    
-    # Get control data
-    ctrl_mask = adata.obs[perturbation_key] == control_label
-    if layer:
-        X_ctrl = adata[ctrl_mask].layers[layer]
-    else:
-        X_ctrl = adata[ctrl_mask].X
-        
-    # Handle sparse matrices
-    if hasattr(X_ctrl, "toarray"):
-        X_ctrl = X_ctrl.toarray()
-        
-    results = {}
-    perturbations = adata.obs[perturbation_key].unique()
-    
-    for pert in perturbations:
-        if pert == control_label:
-            continue
-            
-        pert_mask = adata.obs[perturbation_key] == pert
-        if layer:
-            X_pert = adata[pert_mask].layers[layer]
-        else:
-            X_pert = adata[pert_mask].X
-            
-        if hasattr(X_pert, "toarray"):
-            X_pert = X_pert.toarray()
-            
-        score = perturbation_stability(X_ctrl, X_pert, method=method, **kwargs)
-        results[pert] = score
-        
-    return results
+    return {
+        pert: perturbation_stability(X_ctrl, X_pert, method=method, **kwargs)
+        for pert, X_ctrl, X_pert in _iter_perturbations(
+            adata, perturbation_key, control_label, layer
+        )
+    }
 
 
 def perturbation_effect_size(
@@ -347,37 +340,12 @@ def compute_magnitude(
     """
     if AnnData is None or not isinstance(adata, AnnData):
         raise ImportError("anndata is required for this function.")
-    
-    # Get control data
-    ctrl_mask = adata.obs[perturbation_key] == control_label
-    if layer:
-        X_ctrl = adata[ctrl_mask].layers[layer]
-    else:
-        X_ctrl = adata[ctrl_mask].X
-        
-    if hasattr(X_ctrl, "toarray"):
-        X_ctrl = X_ctrl.toarray()
-        
-    results = {}
-    perturbations = adata.obs[perturbation_key].unique()
-    
-    for pert in perturbations:
-        if pert == control_label:
-            continue
-            
-        pert_mask = adata.obs[perturbation_key] == pert
-        if layer:
-            X_pert = adata[pert_mask].layers[layer]
-        else:
-            X_pert = adata[pert_mask].X
-            
-        if hasattr(X_pert, "toarray"):
-            X_pert = X_pert.toarray()
-            
-        score = perturbation_effect_size(X_ctrl, X_pert, metric=metric)
-        results[pert] = score
-        
-    return results
+    return {
+        pert: perturbation_effect_size(X_ctrl, X_pert, metric=metric)
+        for pert, X_ctrl, X_pert in _iter_perturbations(
+            adata, perturbation_key, control_label, layer
+        )
+    }
 
 
 def compute_stability_whitened(

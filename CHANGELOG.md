@@ -2,6 +2,17 @@
 
 All notable changes to the `shesha` package will be documented in this file.
 
+## [0.2.14] - 2026-03-31
+
+### Fixed
+
+- **`shesha/bio.py`**: Moved `anndata` import to the top of the module alongside other imports. Previously the `try/except ImportError` block was placed mid-file between function definitions, causing static analysis tools to misparse the following function's docstring as a floating duplicate string literal.
+- **`shesha/bio.py`**: Eliminated duplicate AnnData extraction logic in `compute_stability` and `compute_magnitude` by extracting two private helpers:
+  - `_get_array(adata, mask, layer)` — extracts a dense numpy array from an AnnData slice, handling sparse matrices in one place
+  - `_iter_perturbations(adata, perturbation_key, control_label, layer)` — generator yielding `(pert_name, X_ctrl, X_pert)` for each non-control perturbation
+
+---
+
 ## [0.2.0] - 2026-03-20
 Added the `shesha.sim` similarity module (CKA, debiased CKA, Procrustes, RDM) and two new supervised metrics in `shesha.core` (`class_separation_ratio`, `lda_stability`). Extended `shesha.bio` perturbation stability with whitened and k-NN matched methods.
 
