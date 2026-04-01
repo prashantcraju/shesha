@@ -1,10 +1,13 @@
 ---
-title: 'Shesha: Self-Consistency Metrics for Representational Stability Analysis'
+title: 'Shesha: Self-Consistency Metrics for Representational Stability'
 tags:
   - Python
   - machine learning
   - representation learning
   - single-cell biology
+  - perturbation analysis
+  - Constitutional AI
+  - manifold analysis
   - interpretability
 authors:
   - name: Prashant C. Raju
@@ -108,7 +111,7 @@ The package is publicly available on PyPI as `shesha-geometry`, has been archive
 
 In accordance with JOSS AI policy, the author discloses the use of generative AI during the development of this software and paper:
 
-- **Software Creation & Refactoring**: Claude 4.5 (Sonnet/Opus) and Gemini 3 Pro were used to refactor experimental research scripts into a production-grade Python package, including implementation of design patterns, code optimization for readability, and generation of `pytest` scaffolding.
+- **Software Creation & Refactoring**: Claude (Sonnet 4.5/4.6 and Opus 4.5/4.6) and Gemini (3 Pro and 3.1 Pro) were used to refactor experimental research scripts into a production-grade Python package, including implementation of design patterns, code optimization for readability, and generation of `pytest` scaffolding.
 - **Debugging & Documentation**: AI assistants supported identification of edge cases in high-dimensional distance calculations and assisted in drafting docstrings and API reference material.
 - **Formatting & Manuscript Editing**: AI tools helped with LaTeX/Markdown formatting and copy-editing of the paper text.
 - **Visual Assets**: The software logo was generated using Nano Banana Pro.
