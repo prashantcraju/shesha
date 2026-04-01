@@ -12,6 +12,11 @@ try:
 except ImportError:
     from typing_extensions import Literal
 
+try:
+    from anndata import AnnData
+except ImportError:
+    AnnData = None
+
 __all__ = [
     "perturbation_stability", 
     "perturbation_stability_whitened",
@@ -193,11 +198,6 @@ def _perturbation_stability_standard(
     
     else:
         raise ValueError(f"Unknown metric: {metric}. Use 'cosine' or 'euclidean'.")
-
-try:
-    from anndata import AnnData
-except ImportError:
-    AnnData = None
 
 def compute_stability(
     adata: "AnnData",
