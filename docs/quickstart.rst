@@ -46,10 +46,6 @@ Single-cell perturbation analysis (Bio)
 
 For CRISPR or drug screens stored as `AnnData <https://anndata.readthedocs.io>`_ objects:
 
-.. code-block:: bash
-
-   pip install "shesha-geometry[bio]"
-
 .. code-block:: python
 
    import numpy as np

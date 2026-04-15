@@ -4,13 +4,6 @@ Biological Perturbation Analysis
 ``shesha.bio`` provides metrics for single-cell and CRISPR perturbation experiments.
 It works natively with `AnnData <https://anndata.readthedocs.io>`_ objects.
 
-Requirements
-------------
-
-.. code-block:: bash
-
-   pip install "shesha-geometry[bio]"   # includes anndata + scikit-learn
-
 Compute stability
 -----------------
 
