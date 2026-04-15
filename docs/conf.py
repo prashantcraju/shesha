@@ -39,6 +39,7 @@ html_theme = "furo"
 html_title = "Shesha"
 html_logo = None
 html_static_path = ["_static"]
+html_baseurl = "https://shesha-geometry.readthedocs.io/en/latest/"
 
 html_theme_options = {
     "sidebar_hide_name": False,
