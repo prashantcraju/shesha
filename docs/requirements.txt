@@ -1,4 +1,6 @@
 sphinx>=7.0
-furo>=2024.1.29
+furo
 myst-parser>=3.0
 sphinx-autodoc-typehints>=2.0
+numpy>=1.20
+scipy>=1.7
