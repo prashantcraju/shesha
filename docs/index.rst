@@ -41,4 +41,5 @@ representations via self-consistency of Representational Dissimilarity Matrices 
    :maxdepth: 1
    :caption: Development
 
+   citation
    changelog
