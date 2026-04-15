@@ -2,6 +2,17 @@
 
 All notable changes to the `shesha` package will be documented in this file.
 
+## [0.2.15] - 2026-04-15
+
+### Added
+
+- Read the Docs documentation site with full Sphinx setup (`docs/`)
+- API reference pages for `shesha.core`, `shesha.bio`, and `shesha.sim`
+- User guides for unsupervised, supervised, drift, bio, and similarity metrics
+- `.readthedocs.yaml` configuration for automated doc builds on RTD
+
+---
+
 ## [0.2.14] - 2026-03-31
 
 ### Fixed
