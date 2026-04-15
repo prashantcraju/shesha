@@ -3,6 +3,7 @@
 [![Socket Badge](https://badge.socket.dev/pypi/package/shesha-geometry/0.2.12?artifact_id=tar-gz)](https://badge.socket.dev/pypi/package/shesha-geometry/0.2.12?artifact_id=tar-gz)
 [![CodeFactor](https://www.codefactor.io/repository/github/prashantcraju/shesha/badge)](https://www.codefactor.io/repository/github/prashantcraju/shesha)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.18227453.svg)](https://doi.org/10.5281/zenodo.18227453)
+[![License](https://img.shields.io/badge/license-MIT-blue)](https://github.com/prashantcraju/shesha/blob/main/LICENSE)
 [![PyPI Downloads](https://static.pepy.tech/personalized-badge/shesha-geometry?period=total&units=NONE&left_color=GRAY&right_color=BLUE&left_text=downloads)](https://pepy.tech/projects/shesha-geometry)
 <p align="center">
     <img src="https://i.imgur.com/oJ5YhBo.jpg" alt="Shesha Logo" width="300">

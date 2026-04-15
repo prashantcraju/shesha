@@ -1,7 +1,7 @@
 cff-version: 1.2.0
 message: "If you use this software, please cite it as below."
 type: software
-title: "Shesha: Self-Consistency Metrics for Representational Stability Analysis"
+title: "Shesha: Self-Consistency Metrics for Representational Stability"
 authors:
   - family-names: "Raju"
     given-names: "Prashant C."
@@ -28,5 +28,5 @@ preferred-citation:
       orcid: "https://orcid.org/0000-0003-3778-4788"
   title: "Geometric Stability: The Missing Axis of Representations"
   year: 2026
-  journal: "arXiv preprint"
+  journal: "arXiv preprint arXiv:2601.09173"
   url: "https://arxiv.org/abs/2601.09173"

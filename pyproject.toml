@@ -75,7 +75,7 @@ dev = [
 
 [project.urls]
 Homepage = "https://github.com/prashantcraju/shesha"
-Documentation = "https://github.com/prashantcraju/shesha#readme"
+Documentation = "https://shesha.readthedocs.io"
 Repository = "https://github.com/prashantcraju/shesha"
 Issues = "https://github.com/prashantcraju/shesha/issues"
 
