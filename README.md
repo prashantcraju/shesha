@@ -1,5 +1,6 @@
 [![PyPI version](https://img.shields.io/pypi/v/shesha-geometry.svg?cache=bust)](https://pypi.org/project/shesha-geometry/)
 [![Tests](https://github.com/prashantcraju/shesha/actions/workflows/test.yml/badge.svg?branch=main)](https://github.com/prashantcraju/shesha/actions/workflows/test.yml)
+[![Documentation Status](https://readthedocs.org/projects/shesha-geometry/badge/?version=latest)](https://shesha-geometry.readthedocs.io/en/latest/?badge=latest)
 [![Socket Badge](https://badge.socket.dev/pypi/package/shesha-geometry/0.2.12?artifact_id=tar-gz)](https://badge.socket.dev/pypi/package/shesha-geometry/0.2.12?artifact_id=tar-gz)
 [![CodeFactor](https://www.codefactor.io/repository/github/prashantcraju/shesha/badge)](https://www.codefactor.io/repository/github/prashantcraju/shesha)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.18227453.svg)](https://doi.org/10.5281/zenodo.18227453)
@@ -495,6 +496,26 @@ If you use `shesha-geometry`, please cite:
   title = {Geometric Stability: The Missing Axis of Representations},
   author = {Raju, Prashant C.},
   journal = {arXiv preprint arXiv:2601.09173},
+  year = {2026}
+}
+```
+
+If you use the supervised variants (`supervised_alignment`, `lda_stability`, `variance_ratio`, `class_separation_ratio`), please also cite:
+```bibtex
+@article{raju2026canary,
+  title = {The Geometric Canary: Predicting Steerability and Detecting Drift via Representational Stability},
+  author = {Raju, Prashant C.},
+  journal = {arXiv preprint arXiv:2604.17698},
+  year = {2026}
+}
+```
+
+If you use the `shesha.bio` module, please also cite:
+```bibtex
+@article{raju2026crispr,
+  title = {Geometric coherence of single-cell CRISPR perturbations reveals regulatory architecture and predicts cellular stress},
+  author = {Raju, Prashant C.},
+  journal = {arXiv preprint arXiv:2604.16642},
   year = {2026}
 }
 ```
