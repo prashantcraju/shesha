@@ -16,7 +16,7 @@ authors:
 affiliations:
   - name: Independent Researcher
     index: 1
-date: 15 March 2026
+date: 21 April 2026
 bibliography: paper.bib
 ---
 
@@ -24,7 +24,7 @@ bibliography: paper.bib
 
 Analysis of learned representations has historically focused on **similarity**, measuring how closely internal embeddings align with external references. However, similarity only reveals *what* is represented, not whether that structure is robust to internal or external perturbations. `Shesha` is an open-source Python framework designed to quantify **geometric stability**, a distinct dimension of representational quality that measures how reliably a model's internal geometry holds under perturbation.
 
-The framework unifies three lines of research into a single package: (1) foundational unsupervised stability metrics for general representation analysis [@raju2026geometric]; (2) supervised alignment metrics and LLM steerability prediction [@raju2026canary]; and (3) geometric coherence analysis for single-cell perturbation biology experiments [@raju2026crispr]. Implementations are available in `shesha.core` (general ML) and `shesha.bio` (single-cell biology with native `AnnData` support).
+The framework unifies three lines of research into a single package: (1) foundational unsupervised stability metrics for general representation analysis and LLM drift detection [@raju2026geometric]; (2) supervised alignment metrics and LLM steerability prediction [@raju2026canary]; and (3) geometric coherence analysis for single-cell perturbation biology experiments [@raju2026crispr]. Implementations are available in `shesha.core` (general ML) and `shesha.bio` (single-cell biology with native `AnnData` support).
 
 # Mathematical Framework
 
@@ -72,7 +72,7 @@ All variants use Spearman correlation by default (robust to monotonic transforma
 
 # Statement of Need
 
-Geometric stability is an **intrinsic property** of a representation's manifold that measures how consistently it preserves internal geometric structure across varied feature subsets or under perturbation. Unlike similarity metrics such as Centered Kernel Alignment (CKA) [@kornblith2019similarity] and Representational Similarity Analysis (RSA) [@Kriegeskorte2008]—which are **extrinsic properties** measuring how one representation aligns with another—stability is reference-independent. It asks whether the internal "geometry" of the representational space is robust or brittle.
+Geometric stability is an **intrinsic property** of a representation's manifold that measures how consistently it preserves internal geometric structure across varied feature subsets or under perturbation. Unlike similarity metrics such as Centered Kernel Alignment (CKA) [@kornblith2019similarity] and Representational Similarity Analysis (RSA) [@Kriegeskorte2008]—which are **extrinsic properties** measuring how one representation aligns with another—stability is reference-independent. It asks whether the internal "geometry" of the representational space is robust or brittle. Shesha provides a unified API for geometric stability analysis, with applications spanning representation learning [@raju2026geometric], model steerability and drift detection [@raju2026canary], and single-cell perturbation biology [@raju2026crispr].
 
 ## Stability vs. Similarity: A Mechanistic Distinction
 

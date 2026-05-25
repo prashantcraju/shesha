@@ -2,6 +2,20 @@
 
 All notable changes to the `shesha` package will be documented in this file.
 
+## [0.2.17] - 2026-05-25
+
+### Changed
+
+- Simplified `README.md` and `README_PYPI.md`: removed inline API reference, variants, examples, and testing sections in favour of a link to the ReadTheDocs documentation site. Tutorials and citation blocks retained.
+- Updated logo reference in `README.md` to use the local `assets/shesha-logo.jpg` path; `README_PYPI.md` retains the absolute URL for PyPI rendering.
+
+### Fixed
+
+- `tutorials/crispr_tutorial.ipynb`: pinned `pertpy==1.0.4` in the install cell. `pertpy>=1.0.5` switched the Norman 2019 dataset from a sparse figshare-hosted `.h5ad` to a dense scverse-hosted file (~8.5 GB in memory), causing out-of-memory crashes on free Colab. The pin restores the sparse figshare file.
+- `paper/paper.bib`: corrected `vandenBosch2025` entry — changed `publisher = {openRxiv}` to `journal = {bioRxiv}`, updated URL scheme to `https://doi.org/`, and lowercased the `month` macro.
+
+---
+
 ## [0.2.15] - 2026-04-15
 
 ### Added
