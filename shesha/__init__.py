@@ -45,7 +45,7 @@ from .core import (
 from . import bio
 from . import sim
 
-__version__ = "0.2.16"
+__version__ = "0.2.18"
 __author__ = "Prashant Raju"
 
 __all__ = [

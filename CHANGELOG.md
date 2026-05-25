@@ -2,6 +2,14 @@
 
 All notable changes to the `shesha` package will be documented in this file.
 
+## [0.2.18] - 2026-05-26
+
+### Changed
+
+- `tutorials/crispr_tutorial.ipynb`: restored `pt.dt.norman_2019()` loading and standard optional install cell. Added notes that the Norman 2019 dataset (~111k cells) is too large for the standard free Google Colab runtime; recommend Colab Pro, a local machine, or more RAM.
+
+---
+
 ## [0.2.17] - 2026-05-25
 
 ### Changed
@@ -11,10 +19,10 @@ All notable changes to the `shesha` package will be documented in this file.
 
 ### Fixed
 
-- `tutorials/crispr_tutorial.ipynb`: pinned `pertpy==1.0.4` in the install cell. `pertpy>=1.0.5` switched the Norman 2019 dataset from a sparse figshare-hosted `.h5ad` to a dense scverse-hosted file (~8.5 GB in memory), causing out-of-memory crashes on free Colab. The pin restores the sparse figshare file.
 - `paper/paper.bib`: corrected `vandenBosch2025` entry — changed `publisher = {openRxiv}` to `journal = {bioRxiv}`, updated URL scheme to `https://doi.org/`, and lowercased the `month` macro.
 
 ---
+
 
 ## [0.2.15] - 2026-04-15
 
