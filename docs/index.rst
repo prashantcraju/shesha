@@ -28,6 +28,7 @@ representations via self-consistency of Representational Dissimilarity Matrices 
    guide/drift
    guide/bio
    guide/sim
+   guide/bootstrap_ci
 
 .. toctree::
    :maxdepth: 2

@@ -14,6 +14,8 @@ try:
 except ImportError:
     from typing_extensions import Literal
 
+from ._utils import bootstrap_ci, bootstrap_ci_two_sample
+
 __all__ = [
     # Unsupervised variants
     "feature_split",
@@ -79,7 +81,9 @@ def feature_split(
     metric: Literal["cosine", "correlation"] = "cosine",
     seed: Optional[int] = None,
     max_samples: Optional[int] = 1600,
-) -> float:
+    n_bootstrap_ci: Optional[int] = None,
+    ci: float = 0.95,
+) -> Union[float, dict]:
     """
     Feature-Split Shesha: measures internal geometric consistency.
     
@@ -99,18 +103,35 @@ def feature_split(
         Random seed for reproducibility.
     max_samples : int, optional
         Subsample to this many samples if exceeded (for efficiency).
+    n_bootstrap_ci : int, optional
+        If provided, compute bootstrap confidence interval by resampling
+        the input data this many times (e.g. 1000 or 10000).
+    ci : float, default=0.95
+        Confidence level for the interval (only used when n_bootstrap_ci is set).
     
     Returns
     -------
-    float
-        Mean Spearman correlation between split-half RDMs. Range: [-1, 1].
+    float or dict
+        If n_bootstrap_ci is None: mean Spearman correlation. Range: [-1, 1].
+        If n_bootstrap_ci is set: dict with keys 'mean', 'ci_low', 'ci_high',
+        'std', 'n_bootstraps', 'ci_level'.
     
     Examples
     --------
     >>> X = np.random.randn(500, 768)  # 500 samples, 768-dim embeddings
     >>> stability = feature_split(X, n_splits=30, seed=320)
     >>> print(f"Feature-split stability: {stability:.3f}")
+    
+    >>> # With bootstrap confidence interval
+    >>> result = feature_split(X, n_splits=30, seed=320, n_bootstrap_ci=1000)
+    >>> print(f"{result['mean']:.3f} [{result['ci_low']:.3f}, {result['ci_high']:.3f}]")
     """
+    if n_bootstrap_ci is not None:
+        return bootstrap_ci(
+            feature_split, n_bootstrap_ci, ci, seed,
+            np.asarray(X, dtype=np.float64),
+            n_splits=n_splits, metric=metric, seed=seed, max_samples=max_samples,
+        )
     X = np.asarray(X, dtype=np.float64)
     n_samples, n_features = X.shape
     
@@ -168,7 +189,9 @@ def sample_split(
     metric: Literal["cosine", "correlation"] = "cosine",
     seed: Optional[int] = None,
     max_samples: Optional[int] = 1500,
-) -> float:
+    n_bootstrap_ci: Optional[int] = None,
+    ci: float = 0.95,
+) -> Union[float, dict]:
     """
     Sample-Split Shesha (Bootstrap RDM): measures robustness to input variation.
     
@@ -190,17 +213,31 @@ def sample_split(
         Random seed for reproducibility.
     max_samples : int, optional
         Subsample to this many samples if exceeded.
+    n_bootstrap_ci : int, optional
+        If provided, compute bootstrap confidence interval by resampling
+        the input data this many times.
+    ci : float, default=0.95
+        Confidence level for the interval.
     
     Returns
     -------
-    float
-        Mean Spearman correlation between bootstrap RDMs. Range: [-1, 1].
+    float or dict
+        If n_bootstrap_ci is None: mean Spearman correlation. Range: [-1, 1].
+        If n_bootstrap_ci is set: dict with keys 'mean', 'ci_low', 'ci_high',
+        'std', 'n_bootstraps', 'ci_level'.
     
     Examples
     --------
     >>> X = np.random.randn(1000, 384)
     >>> stability = sample_split(X, n_splits=50, seed=320)
     """
+    if n_bootstrap_ci is not None:
+        return bootstrap_ci(
+            sample_split, n_bootstrap_ci, ci, seed,
+            np.asarray(X, dtype=np.float64),
+            n_splits=n_splits, subsample_fraction=subsample_fraction,
+            metric=metric, seed=seed, max_samples=max_samples,
+        )
     X = np.asarray(X, dtype=np.float64)
     n_samples = X.shape[0]
     
@@ -248,7 +285,9 @@ def anchor_stability(
     rank_normalize: bool = True,
     seed: Optional[int] = None,
     max_samples: Optional[int] = 1500,
-) -> float:
+    n_bootstrap_ci: Optional[int] = None,
+    ci: float = 0.95,
+) -> Union[float, dict]:
     """
     Anchor-based Shesha: measures stability of distance profiles from fixed anchors.
     
@@ -274,12 +313,27 @@ def anchor_stability(
         Random seed.
     max_samples : int, optional
         Subsample to this many samples if exceeded.
+    n_bootstrap_ci : int, optional
+        If provided, compute bootstrap confidence interval by resampling
+        the input data this many times.
+    ci : float, default=0.95
+        Confidence level for the interval.
     
     Returns
     -------
-    float
-        Mean correlation of anchor distance profiles across splits.
+    float or dict
+        If n_bootstrap_ci is None: mean correlation of anchor distance profiles.
+        If n_bootstrap_ci is set: dict with keys 'mean', 'ci_low', 'ci_high',
+        'std', 'n_bootstraps', 'ci_level'.
     """
+    if n_bootstrap_ci is not None:
+        return bootstrap_ci(
+            anchor_stability, n_bootstrap_ci, ci, seed,
+            np.asarray(X, dtype=np.float64),
+            n_splits=n_splits, n_anchors=n_anchors, n_per_split=n_per_split,
+            metric=metric, rank_normalize=rank_normalize,
+            seed=seed, max_samples=max_samples,
+        )
     X = np.asarray(X, dtype=np.float64)
     n_samples = X.shape[0]
     
@@ -343,7 +397,10 @@ def anchor_stability(
 def variance_ratio(
     X: np.ndarray,
     y: np.ndarray,
-) -> float:
+    n_bootstrap_ci: Optional[int] = None,
+    ci: float = 0.95,
+    seed: Optional[int] = None,
+) -> Union[float, dict]:
     """
     Variance Ratio Shesha: ratio of between-class to total variance.
     
@@ -357,11 +414,20 @@ def variance_ratio(
         Data matrix of shape (n_samples, n_features).
     y : np.ndarray
         Class labels of shape (n_samples,).
+    n_bootstrap_ci : int, optional
+        If provided, compute bootstrap confidence interval by resampling
+        the input data this many times.
+    ci : float, default=0.95
+        Confidence level for the interval.
+    seed : int, optional
+        Random seed for bootstrap reproducibility.
     
     Returns
     -------
-    float
-        Between-class variance / total variance. Range: [0, 1].
+    float or dict
+        If n_bootstrap_ci is None: between-class variance / total variance. Range: [0, 1].
+        If n_bootstrap_ci is set: dict with keys 'mean', 'ci_low', 'ci_high',
+        'std', 'n_bootstraps', 'ci_level'.
     
     Examples
     --------
@@ -369,6 +435,11 @@ def variance_ratio(
     >>> y = np.random.randint(0, 10, 500)
     >>> vr = variance_ratio(X, y)
     """
+    if n_bootstrap_ci is not None:
+        return bootstrap_ci(
+            variance_ratio, n_bootstrap_ci, ci, seed,
+            np.asarray(X, dtype=np.float64), np.asarray(y),
+        )
     X = np.asarray(X, dtype=np.float64)
     y = np.asarray(y)
     
@@ -398,7 +469,9 @@ def supervised_alignment(
     metric: Literal["cosine", "correlation"] = "correlation",
     seed: Optional[int] = None,
     max_samples: int = 300,
-) -> float:
+    n_bootstrap_ci: Optional[int] = None,
+    ci: float = 0.95,
+) -> Union[float, dict]:
     """
     Supervised RDM Alignment: correlation between model RDM and ideal label RDM.
     
@@ -417,12 +490,25 @@ def supervised_alignment(
         Random seed for subsampling.
     max_samples : int
         Subsample to this many samples (RDM computation is O(n^2)).
+    n_bootstrap_ci : int, optional
+        If provided, compute bootstrap confidence interval by resampling
+        the input data this many times.
+    ci : float, default=0.95
+        Confidence level for the interval.
     
     Returns
     -------
-    float
-        Spearman correlation between model and ideal RDMs. Range: [-1, 1].
+    float or dict
+        If n_bootstrap_ci is None: Spearman correlation. Range: [-1, 1].
+        If n_bootstrap_ci is set: dict with keys 'mean', 'ci_low', 'ci_high',
+        'std', 'n_bootstraps', 'ci_level'.
     """
+    if n_bootstrap_ci is not None:
+        return bootstrap_ci(
+            supervised_alignment, n_bootstrap_ci, ci, seed,
+            np.asarray(X, dtype=np.float64), np.asarray(y),
+            metric=metric, seed=seed, max_samples=max_samples,
+        )
     X = np.asarray(X, dtype=np.float64)
     y = np.asarray(y)
     
@@ -452,7 +538,9 @@ def class_separation_ratio(
     subsample_frac: float = 0.5,
     metric: Literal["cosine", "euclidean"] = "euclidean",
     seed: Optional[int] = None,
-) -> float:
+    n_bootstrap_ci: Optional[int] = None,
+    ci: float = 0.95,
+) -> Union[float, dict]:
     """
     Class Separation Ratio: ratio of between-class to within-class distances.
     
@@ -474,12 +562,18 @@ def class_separation_ratio(
         Distance metric: 'cosine' or 'euclidean'.
     seed : int, optional
         Random seed for reproducibility.
+    n_bootstrap_ci : int, optional
+        If provided, compute bootstrap confidence interval by resampling
+        the input data this many times.
+    ci : float, default=0.95
+        Confidence level for the interval.
     
     Returns
     -------
-    float
-        Mean separation ratio across bootstrap samples. Higher values indicate
-        better class separation. Range: [0, inf), typically [0.5, 5.0].
+    float or dict
+        If n_bootstrap_ci is None: mean separation ratio. Range: [0, inf).
+        If n_bootstrap_ci is set: dict with keys 'mean', 'ci_low', 'ci_high',
+        'std', 'n_bootstraps', 'ci_level'.
     
     Examples
     --------
@@ -495,6 +589,13 @@ def class_separation_ratio(
     Higher values indicate representations where same-class samples are closer
     together than different-class samples, suggesting good discriminability.
     """
+    if n_bootstrap_ci is not None:
+        return bootstrap_ci(
+            class_separation_ratio, n_bootstrap_ci, ci, seed,
+            np.asarray(X, dtype=np.float64), np.asarray(y),
+            n_bootstrap=n_bootstrap, subsample_frac=subsample_frac,
+            metric=metric, seed=seed,
+        )
     X = np.asarray(X, dtype=np.float64)
     y = np.asarray(y)
     
@@ -561,7 +662,9 @@ def lda_stability(
     n_bootstrap: int = 50,
     subsample_frac: float = 0.5,
     seed: Optional[int] = None,
-) -> float:
+    n_bootstrap_ci: Optional[int] = None,
+    ci: float = 0.95,
+) -> Union[float, dict]:
     """
     LDA Subspace Stability: consistency of linear discriminant direction.
     
@@ -581,12 +684,18 @@ def lda_stability(
         Fraction of samples to use per bootstrap (0.0-1.0).
     seed : int, optional
         Random seed for reproducibility.
+    n_bootstrap_ci : int, optional
+        If provided, compute bootstrap confidence interval by resampling
+        the input data this many times.
+    ci : float, default=0.95
+        Confidence level for the interval.
     
     Returns
     -------
-    float
-        Mean absolute cosine similarity between full and bootstrap discriminant
-        vectors. Range: [0, 1]. Values near 1 indicate stable discriminant subspace.
+    float or dict
+        If n_bootstrap_ci is None: mean absolute cosine similarity. Range: [0, 1].
+        If n_bootstrap_ci is set: dict with keys 'mean', 'ci_low', 'ci_high',
+        'std', 'n_bootstraps', 'ci_level'.
     
     Examples
     --------
@@ -606,6 +715,12 @@ def lda_stability(
     Only works for binary classification. For multi-class, consider using
     class_separation_ratio instead.
     """
+    if n_bootstrap_ci is not None:
+        return bootstrap_ci(
+            lda_stability, n_bootstrap_ci, ci, seed,
+            np.asarray(X, dtype=np.float64), np.asarray(y),
+            n_bootstrap=n_bootstrap, subsample_frac=subsample_frac, seed=seed,
+        )
     X = np.asarray(X, dtype=np.float64)
     y = np.asarray(y)
     
@@ -682,7 +797,10 @@ def rdm_similarity(
     Y: np.ndarray,
     method: Literal["spearman", "pearson"] = "spearman",
     metric: Literal["cosine", "correlation", "euclidean"] = "cosine",
-) -> float:
+    n_bootstrap_ci: Optional[int] = None,
+    ci: float = 0.95,
+    seed: Optional[int] = None,
+) -> Union[float, dict]:
     """
     Compute RDM similarity between two representations.
     
@@ -701,12 +819,20 @@ def rdm_similarity(
         Correlation method: 'spearman' (rank-based, default) or 'pearson'.
     metric : str
         Distance metric for RDM computation: 'cosine', 'correlation', or 'euclidean'.
+    n_bootstrap_ci : int, optional
+        If provided, compute bootstrap confidence interval by resampling
+        the input data this many times.
+    ci : float, default=0.95
+        Confidence level for the interval.
+    seed : int, optional
+        Random seed for bootstrap reproducibility.
     
     Returns
     -------
-    float
-        Correlation between RDMs. Range: [-1, 1].
-        Higher values indicate more similar geometric structure.
+    float or dict
+        If n_bootstrap_ci is None: correlation between RDMs. Range: [-1, 1].
+        If n_bootstrap_ci is set: dict with keys 'mean', 'ci_low', 'ci_high',
+        'std', 'n_bootstraps', 'ci_level'.
     
     Examples
     --------
@@ -728,6 +854,13 @@ def rdm_similarity(
     - The representations can have different feature dimensions (only sample
       count must match)
     """
+    if n_bootstrap_ci is not None:
+        return bootstrap_ci_two_sample(
+            rdm_similarity, n_bootstrap_ci, ci, seed,
+            np.asarray(X, dtype=np.float64),
+            np.asarray(Y, dtype=np.float64),
+            method=method, metric=metric,
+        )
     X = np.asarray(X, dtype=np.float64)
     Y = np.asarray(Y, dtype=np.float64)
     
@@ -765,7 +898,10 @@ def rdm_drift(
     Y: np.ndarray,
     method: Literal["spearman", "pearson"] = "spearman",
     metric: Literal["cosine", "correlation", "euclidean"] = "cosine",
-) -> float:
+    n_bootstrap_ci: Optional[int] = None,
+    ci: float = 0.95,
+    seed: Optional[int] = None,
+) -> Union[float, dict]:
     """
     Compute representational drift between two representations.
     
@@ -785,14 +921,20 @@ def rdm_drift(
         Correlation method: 'spearman' (rank-based, default) or 'pearson'.
     metric : str
         Distance metric for RDM computation.
+    n_bootstrap_ci : int, optional
+        If provided, compute bootstrap confidence interval by resampling
+        the input data this many times.
+    ci : float, default=0.95
+        Confidence level for the interval.
+    seed : int, optional
+        Random seed for bootstrap reproducibility.
     
     Returns
     -------
-    float
-        Drift score: 1 - RDM_correlation. Range: [0, 2].
-        - 0: Identical geometric structure
-        - 1: Uncorrelated (random relationship)
-        - 2: Perfectly anti-correlated (inverted structure)
+    float or dict
+        If n_bootstrap_ci is None: drift score. Range: [0, 2].
+        If n_bootstrap_ci is set: dict with keys 'mean', 'ci_low', 'ci_high',
+        'std', 'n_bootstraps', 'ci_level'.
     
     Examples
     --------
@@ -814,6 +956,13 @@ def rdm_drift(
     --------
     rdm_similarity : The inverse metric (similarity instead of drift)
     """
+    if n_bootstrap_ci is not None:
+        return bootstrap_ci_two_sample(
+            rdm_drift, n_bootstrap_ci, ci, seed,
+            np.asarray(X, dtype=np.float64),
+            np.asarray(Y, dtype=np.float64),
+            method=method, metric=metric,
+        )
     similarity = rdm_similarity(X, Y, method=method, metric=metric)
     
     if np.isnan(similarity):

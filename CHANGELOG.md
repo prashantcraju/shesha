@@ -2,6 +2,23 @@
 
 All notable changes to the `shesha` package will be documented in this file.
 
+## [0.2.2] - 2026-05-28
+
+### Added
+
+- **Bootstrap confidence intervals** (outer bootstrap on input data): optional `n_bootstrap_ci` and `ci` parameters on all public metrics in `shesha.core`, `shesha.bio`, and `shesha.sim`. When `n_bootstrap_ci` is set, functions return a dict with `mean`, `ci_low`, `ci_high`, `std`, `n_bootstraps`, and `ci_level`; default behaviour (no `n_bootstrap_ci`) still returns a `float`.
+- `shesha/_utils.py`: shared helpers `bootstrap_ci`, `bootstrap_ci_two_sample`, and `bootstrap_ci_bio` for single-matrix, paired two-sample, and independent two-population resampling.
+- `tests/test_bootstrap_ci.py`: tests for CI dict structure, backward compatibility, determinism, and coverage across core, bio, and sim.
+- Read the Docs user guide `docs/guide/bootstrap_ci.rst`; CI examples added to existing guides and quickstart.
+
+### Changed
+
+- Core metrics with CI support: `feature_split`, `sample_split`, `anchor_stability`, `variance_ratio`, `supervised_alignment`, `class_separation_ratio`, `lda_stability`, `rdm_similarity`, `rdm_drift`.
+- Bio metrics with CI support: `perturbation_stability`, `perturbation_effect_size`.
+- Sim metrics with CI support: `cka`, `cka_linear`, `cka_debiased`, `procrustes_similarity`, `rdm_similarity`.
+
+---
+
 ## [0.2.18] - 2026-05-26
 
 ### Changed

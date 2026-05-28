@@ -41,6 +41,18 @@ Measuring drift
    drift = shesha.rdm_drift(X_before, X_after)
    print(f"RDM similarity: {similarity:.3f}, drift: {drift:.3f}")
 
+Bootstrap confidence intervals
+-------------------------------
+
+Any metric can return a confidence interval instead of a single float:
+
+.. code-block:: python
+
+   result = shesha.feature_split(X, n_splits=30, seed=320, n_bootstrap_ci=1000)
+   print(f"{result['mean']:.3f} [{result['ci_low']:.3f}, {result['ci_high']:.3f}]")
+
+See :doc:`guide/bootstrap_ci` for details.
+
 Single-cell perturbation analysis (Bio)
 ----------------------------------------
 

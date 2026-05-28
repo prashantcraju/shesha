@@ -35,3 +35,14 @@ points and correlates them across two bootstrap draws. Suitable for very large d
 .. code-block:: python
 
    stability = shesha.anchor_stability(X, n_splits=30, n_anchors=100)
+
+Bootstrap confidence intervals
+------------------------------
+
+All unsupervised metrics support optional bootstrap CIs via ``n_bootstrap_ci``.
+See :doc:`bootstrap_ci` for full details.
+
+.. code-block:: python
+
+   result = shesha.feature_split(X, n_splits=30, seed=320, n_bootstrap_ci=1000)
+   print(f"{result['mean']:.3f} [{result['ci_low']:.3f}, {result['ci_high']:.3f}]")

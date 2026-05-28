@@ -6,14 +6,15 @@ authors:
   - family-names: "Raju"
     given-names: "Prashant C."
     orcid: "https://orcid.org/0000-0003-3778-4788"
-version: 0.2.17
+version: 0.2.2
 doi: 10.5281/zenodo.18227453
-date-released: 2026-05-25
+date-released: 2026-05-27
 url: "https://github.com/prashantcraju/shesha"
 repository-code: "https://github.com/prashantcraju/shesha"
 keywords:
   - geometric stability
   - representation learning
+  - representational analysis
   - machine learning
   - single-cell biology
   - interpretability

@@ -37,3 +37,14 @@ Monitoring fine-tuning
        stability = shesha.feature_split(X_current, seed=320)
        drift = shesha.rdm_drift(X_initial, X_current)
        print(f"Epoch {epoch}: stability={stability:.3f}, drift={drift:.3f}")
+
+Bootstrap confidence intervals
+------------------------------
+
+Drift metrics support optional bootstrap CIs via ``n_bootstrap_ci``.
+See :doc:`bootstrap_ci` for full details.
+
+.. code-block:: python
+
+   result = shesha.rdm_drift(X_before, X_after, n_bootstrap_ci=1000, seed=320)
+   print(f"{result['mean']:.3f} [{result['ci_low']:.3f}, {result['ci_high']:.3f}]")

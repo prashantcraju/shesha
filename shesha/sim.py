@@ -15,12 +15,14 @@ import numpy as np
 from scipy.spatial.distance import pdist
 from scipy.stats import spearmanr, pearsonr
 from scipy.linalg import orthogonal_procrustes
-from typing import Optional
+from typing import Optional, Union
 
 try:
     from typing import Literal
 except ImportError:
     from typing_extensions import Literal
+
+from ._utils import bootstrap_ci_two_sample
 
 
 __all__ = [
@@ -38,7 +40,13 @@ EPS = 1e-12
 # CKA (Centered Kernel Alignment)
 # =============================================================================
 
-def cka_linear(X: np.ndarray, Y: np.ndarray) -> float:
+def cka_linear(
+    X: np.ndarray,
+    Y: np.ndarray,
+    n_bootstrap_ci: Optional[int] = None,
+    ci: float = 0.95,
+    seed: Optional[int] = None,
+) -> Union[float, dict]:
     """
     Linear Centered Kernel Alignment (CKA) - Standard version.
     
@@ -53,13 +61,20 @@ def cka_linear(X: np.ndarray, Y: np.ndarray) -> float:
     Y : np.ndarray
         Second representation matrix of shape (n_samples, n_features_y).
         Must have same number of samples as X.
+    n_bootstrap_ci : int, optional
+        If provided, compute bootstrap confidence interval by resampling
+        the input data this many times.
+    ci : float, default=0.95
+        Confidence level for the interval.
+    seed : int, optional
+        Random seed for bootstrap reproducibility.
     
     Returns
     -------
-    float
-        CKA similarity score in [0, 1]. Higher values indicate more similar
-        representational structure. 1.0 means identical structure (up to
-        linear transformation).
+    float or dict
+        If n_bootstrap_ci is None: CKA similarity score in [0, 1].
+        If n_bootstrap_ci is set: dict with keys 'mean', 'ci_low', 'ci_high',
+        'std', 'n_bootstraps', 'ci_level'.
     
     Examples
     --------
@@ -73,9 +88,9 @@ def cka_linear(X: np.ndarray, Y: np.ndarray) -> float:
     >>> similarity = cka_linear(X, Y)
     >>> print(f"CKA: {similarity:.3f}")
     >>> 
-    >>> # Self-similarity should be 1.0
-    >>> self_sim = cka_linear(X, X)
-    >>> print(f"Self-similarity: {self_sim:.3f}")  # Should be ~1.0
+    >>> # With bootstrap CI
+    >>> result = cka_linear(X, Y, n_bootstrap_ci=1000)
+    >>> print(f"{result['mean']:.3f} [{result['ci_low']:.3f}, {result['ci_high']:.3f}]")
     
     Notes
     -----
@@ -93,6 +108,12 @@ def cka_linear(X: np.ndarray, Y: np.ndarray) -> float:
     Similarity of neural network representations revisited.
     ICML 2019.
     """
+    if n_bootstrap_ci is not None:
+        return bootstrap_ci_two_sample(
+            cka_linear, n_bootstrap_ci, ci, seed,
+            np.asarray(X, dtype=np.float64),
+            np.asarray(Y, dtype=np.float64),
+        )
     X = np.asarray(X, dtype=np.float64)
     Y = np.asarray(Y, dtype=np.float64)
     
@@ -117,7 +138,13 @@ def cka_linear(X: np.ndarray, Y: np.ndarray) -> float:
     return float(num / (den + EPS))
 
 
-def cka_debiased(X: np.ndarray, Y: np.ndarray) -> float:
+def cka_debiased(
+    X: np.ndarray,
+    Y: np.ndarray,
+    n_bootstrap_ci: Optional[int] = None,
+    ci: float = 0.95,
+    seed: Optional[int] = None,
+) -> Union[float, dict]:
     """
     Debiased Centered Kernel Alignment (CKA).
     
@@ -131,12 +158,20 @@ def cka_debiased(X: np.ndarray, Y: np.ndarray) -> float:
     Y : np.ndarray
         Second representation matrix of shape (n_samples, n_features_y).
         Must have same number of samples as X.
+    n_bootstrap_ci : int, optional
+        If provided, compute bootstrap confidence interval by resampling
+        the input data this many times.
+    ci : float, default=0.95
+        Confidence level for the interval.
+    seed : int, optional
+        Random seed for bootstrap reproducibility.
     
     Returns
     -------
-    float
-        Debiased CKA similarity score in [0, 1]. Higher values indicate more
-        similar representational structure.
+    float or dict
+        If n_bootstrap_ci is None: debiased CKA similarity score in [0, 1].
+        If n_bootstrap_ci is set: dict with keys 'mean', 'ci_low', 'ci_high',
+        'std', 'n_bootstraps', 'ci_level'.
     
     Examples
     --------
@@ -173,6 +208,12 @@ def cka_debiased(X: np.ndarray, Y: np.ndarray) -> float:
     Similarity of neural network representations revisited.
     ICML 2019.
     """
+    if n_bootstrap_ci is not None:
+        return bootstrap_ci_two_sample(
+            cka_debiased, n_bootstrap_ci, ci, seed,
+            np.asarray(X, dtype=np.float64),
+            np.asarray(Y, dtype=np.float64),
+        )
     X = np.asarray(X, dtype=np.float64)
     Y = np.asarray(Y, dtype=np.float64)
     
@@ -243,8 +284,11 @@ def cka_debiased(X: np.ndarray, Y: np.ndarray) -> float:
 def cka(
     X: np.ndarray, 
     Y: np.ndarray,
-    debiased: bool = False
-) -> float:
+    debiased: bool = False,
+    n_bootstrap_ci: Optional[int] = None,
+    ci: float = 0.95,
+    seed: Optional[int] = None,
+) -> Union[float, dict]:
     """
     Centered Kernel Alignment (CKA) - Unified interface.
     
@@ -258,11 +302,20 @@ def cka(
         Second representation matrix of shape (n_samples, n_features_y).
     debiased : bool, default=False
         If True, use debiased estimator. Recommended for small sample sizes.
+    n_bootstrap_ci : int, optional
+        If provided, compute bootstrap confidence interval by resampling
+        the input data this many times.
+    ci : float, default=0.95
+        Confidence level for the interval.
+    seed : int, optional
+        Random seed for bootstrap reproducibility.
     
     Returns
     -------
-    float
-        CKA similarity score in [0, 1].
+    float or dict
+        If n_bootstrap_ci is None: CKA similarity score in [0, 1].
+        If n_bootstrap_ci is set: dict with keys 'mean', 'ci_low', 'ci_high',
+        'std', 'n_bootstraps', 'ci_level'.
     
     Examples
     --------
@@ -276,6 +329,9 @@ def cka(
     >>> 
     >>> # Debiased CKA (more accurate for small n)
     >>> sim_debiased = cka(X, Y, debiased=True)
+    >>> 
+    >>> # With bootstrap CI
+    >>> result = cka(X, Y, n_bootstrap_ci=1000)
     
     See Also
     --------
@@ -283,9 +339,9 @@ def cka(
     cka_debiased : Debiased CKA implementation
     """
     if debiased:
-        return cka_debiased(X, Y)
+        return cka_debiased(X, Y, n_bootstrap_ci=n_bootstrap_ci, ci=ci, seed=seed)
     else:
-        return cka_linear(X, Y)
+        return cka_linear(X, Y, n_bootstrap_ci=n_bootstrap_ci, ci=ci, seed=seed)
 
 
 # =============================================================================
@@ -297,7 +353,10 @@ def procrustes_similarity(
     Y: np.ndarray,
     center: bool = True,
     scale: bool = True,
-) -> float:
+    n_bootstrap_ci: Optional[int] = None,
+    ci: float = 0.95,
+    seed: Optional[int] = None,
+) -> Union[float, dict]:
     """
     Procrustes similarity between two representations.
     
@@ -316,12 +375,20 @@ def procrustes_similarity(
         If True, center both matrices before alignment.
     scale : bool, default=True
         If True, scale to unit Frobenius norm before alignment.
+    n_bootstrap_ci : int, optional
+        If provided, compute bootstrap confidence interval by resampling
+        the input data this many times.
+    ci : float, default=0.95
+        Confidence level for the interval.
+    seed : int, optional
+        Random seed for bootstrap reproducibility.
     
     Returns
     -------
-    float
-        Procrustes similarity in [0, 1]. Higher values indicate better alignment.
-        1.0 means perfect alignment (identical up to rotation/reflection).
+    float or dict
+        If n_bootstrap_ci is None: Procrustes similarity in [0, 1].
+        If n_bootstrap_ci is set: dict with keys 'mean', 'ci_low', 'ci_high',
+        'std', 'n_bootstraps', 'ci_level'.
     
     Examples
     --------
@@ -350,6 +417,13 @@ def procrustes_similarity(
     Schönemann, P. H. (1966). A generalized solution of the orthogonal
     Procrustes problem. Psychometrika, 31(1), 1-10.
     """
+    if n_bootstrap_ci is not None:
+        return bootstrap_ci_two_sample(
+            procrustes_similarity, n_bootstrap_ci, ci, seed,
+            np.asarray(X, dtype=np.float64),
+            np.asarray(Y, dtype=np.float64),
+            center=center, scale=scale,
+        )
     try:
         X = np.asarray(X, dtype=np.float64)
         Y = np.asarray(Y, dtype=np.float64)
@@ -432,7 +506,10 @@ def rdm_similarity(
     Y: np.ndarray,
     metric: Literal["cosine", "correlation", "euclidean"] = "cosine",
     method: Literal["spearman", "pearson"] = "spearman",
-) -> float:
+    n_bootstrap_ci: Optional[int] = None,
+    ci: float = 0.95,
+    seed: Optional[int] = None,
+) -> Union[float, dict]:
     """
     RDM-based similarity using correlation of pairwise distances.
     
@@ -451,12 +528,20 @@ def rdm_similarity(
         Distance metric for RDM: 'cosine', 'correlation', or 'euclidean'.
     method : str, default="spearman"
         Correlation method: 'spearman' (rank-based) or 'pearson' (linear).
+    n_bootstrap_ci : int, optional
+        If provided, compute bootstrap confidence interval by resampling
+        the input data this many times.
+    ci : float, default=0.95
+        Confidence level for the interval.
+    seed : int, optional
+        Random seed for bootstrap reproducibility.
     
     Returns
     -------
-    float
-        RDM similarity in [-1, 1]. Higher values indicate more similar
-        pairwise distance structure. Spearman is more robust to outliers.
+    float or dict
+        If n_bootstrap_ci is None: RDM similarity in [-1, 1].
+        If n_bootstrap_ci is set: dict with keys 'mean', 'ci_low', 'ci_high',
+        'std', 'n_bootstraps', 'ci_level'.
     
     Examples
     --------
@@ -486,6 +571,13 @@ def rdm_similarity(
     shesha.rdm_similarity : Identical implementation in core module
     cka : Alternative similarity metric using kernel alignment
     """
+    if n_bootstrap_ci is not None:
+        return bootstrap_ci_two_sample(
+            rdm_similarity, n_bootstrap_ci, ci, seed,
+            np.asarray(X, dtype=np.float64),
+            np.asarray(Y, dtype=np.float64),
+            metric=metric, method=method,
+        )
     X = np.asarray(X, dtype=np.float64)
     Y = np.asarray(Y, dtype=np.float64)
     

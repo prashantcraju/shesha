@@ -1,7 +1,7 @@
 [![PyPI version](https://img.shields.io/pypi/v/shesha-geometry.svg?cache=bust)](https://pypi.org/project/shesha-geometry/)
 [![Tests](https://github.com/prashantcraju/shesha/actions/workflows/test.yml/badge.svg?branch=main)](https://github.com/prashantcraju/shesha/actions/workflows/test.yml)
 [![Documentation Status](https://readthedocs.org/projects/shesha-geometry/badge/?version=latest)](https://shesha-geometry.readthedocs.io/en/latest/?badge=latest)
-[![Socket Badge](https://badge.socket.dev/pypi/package/shesha-geometry/0.2.17?artifact_id=tar-gz)](https://badge.socket.dev/pypi/package/shesha-geometry/0.2.17?artifact_id=tar-gz)
+[![Socket Badge](https://badge.socket.dev/pypi/package/shesha-geometry/0.2.2?artifact_id=tar-gz)](https://badge.socket.dev/pypi/package/shesha-geometry/0.2.2?artifact_id=tar-gz)
 [![CodeFactor](https://www.codefactor.io/repository/github/prashantcraju/shesha/badge)](https://www.codefactor.io/repository/github/prashantcraju/shesha)
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.18227453.svg)](https://doi.org/10.5281/zenodo.18227453)
 [![License](https://img.shields.io/badge/license-MIT-blue)](https://github.com/prashantcraju/shesha/blob/main/LICENSE)

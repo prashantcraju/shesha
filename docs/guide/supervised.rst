@@ -42,3 +42,14 @@ direction across bootstrap resamplings of the data.
 .. code-block:: python
 
    stability = shesha.lda_stability(X, y, n_bootstrap=50)
+
+Bootstrap confidence intervals
+------------------------------
+
+All supervised metrics support optional bootstrap CIs via ``n_bootstrap_ci``.
+See :doc:`bootstrap_ci` for full details.
+
+.. code-block:: python
+
+   result = shesha.variance_ratio(X, y, n_bootstrap_ci=1000, seed=320)
+   print(f"{result['mean']:.3f} [{result['ci_low']:.3f}, {result['ci_high']:.3f}]")

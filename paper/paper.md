@@ -6,7 +6,6 @@ tags:
   - representation learning
   - single-cell biology
   - perturbation analysis
-  - Constitutional AI
   - manifold analysis
   - interpretability
 authors:
@@ -16,7 +15,7 @@ authors:
 affiliations:
   - name: Independent Researcher
     index: 1
-date: 21 April 2026
+date: 31 December 2026
 bibliography: paper.bib
 ---
 
@@ -116,7 +115,7 @@ Existing tools for representational analysis, such as `rsatoolbox` [@vandenBosch
 
 **Single-Cell CRISPR Perturbation Analysis** [@raju2026crispr]: The `shesha.bio` module natively interfaces with AnnData objects to streamline the analysis of large-scale single-cell datasets, such as the Norman et al. (2019) CRISPRa dataset [@norman2019exploring]. The framework provides specialized functions to evaluate the stability of genetic regulators, allowing researchers to distinguish reproducible biological perturbations from stochastic transcriptomic noise without complex preprocessing pipelines.
 
-The package is publicly available on PyPI as `shesha-geometry`, has been archived on Zenodo for long-term preservation, and features comprehensive documentation. Six interactive Colab tutorials allow researchers to explore LLM embeddings, steering vectors, vision model architectures, representational drift, training dynamics, and single-cell CRISPR analysis, each designed to be executable in under 5 minutes.
+The package is publicly available on PyPI as `shesha-geometry`, archived on Zenodo [@raju2026shesha], and features comprehensive documentation. All geometric stability analyses in [@raju2026geometric], [@raju2026canary], and [@raju2026crispr] were conducted using `Shesha`. Six interactive Colab tutorials allow researchers to explore LLM embeddings, steering vectors, vision model architectures, representational drift, training dynamics, and single-cell CRISPR analysis, each designed to be executable in under 5 minutes.
 
 
 # AI Usage Disclosure

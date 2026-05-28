@@ -26,3 +26,6 @@ Thumbs.db
 # Documentation (work-in-progress)
 ANNDATA_INTEGRATION.md
 SIMILARITY_MODULE.md
+
+# Local notes (never commit)
+TODO.md

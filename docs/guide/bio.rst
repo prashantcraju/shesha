@@ -39,3 +39,18 @@ from the centroid of the control population.
        metric='euclidean',
    )
    print(magnitude['KLF1'])   # e.g. 2.40
+
+Bootstrap confidence intervals
+------------------------------
+
+The low-level functions :func:`~shesha.bio.perturbation_stability` and
+:func:`~shesha.bio.perturbation_effect_size` support bootstrap CIs via
+``n_bootstrap_ci``. Control and perturbed populations are resampled independently.
+See :doc:`bootstrap_ci` for full details.
+
+.. code-block:: python
+
+   from shesha.bio import perturbation_stability
+
+   result = perturbation_stability(X_ctrl, X_pert, n_bootstrap_ci=1000, seed=320)
+   print(f"{result['mean']:.3f} [{result['ci_low']:.3f}, {result['ci_high']:.3f}]")

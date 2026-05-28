@@ -6,11 +6,13 @@ measuring the consistency of perturbation effects across individual cells.
 """
 
 import numpy as np
-from typing import Optional
+from typing import Optional, Union
 try:
     from typing import Literal
 except ImportError:
     from typing_extensions import Literal
+
+from ._utils import bootstrap_ci_bio
 
 try:
     from anndata import AnnData
@@ -40,7 +42,9 @@ def perturbation_stability(
     regularization: float = 1e-6,
     seed: Optional[int] = None,
     max_samples: Optional[int] = 1000,
-) -> float:
+    n_bootstrap_ci: Optional[int] = None,
+    ci: float = 0.95,
+) -> Union[float, dict]:
     """
     Perturbation stability: consistency of perturbation effects across samples.
     
@@ -70,13 +74,19 @@ def perturbation_stability(
         Random seed for subsampling reproducibility.
     max_samples : int, optional
         Subsample perturbed population if exceeded.
+    n_bootstrap_ci : int, optional
+        If provided, compute bootstrap confidence interval by resampling
+        control and perturbed populations this many times.
+    ci : float, default=0.95
+        Confidence level for the interval.
     
     Returns
     -------
-    float
-        Stability score in [-1, 1]. Higher = more consistent perturbation effect.
-        Values near 1 indicate all samples shift in the same direction;
-        values near 0 indicate random/inconsistent shifts.
+    float or dict
+        If n_bootstrap_ci is None: stability score in [-1, 1].
+        Higher = more consistent perturbation effect.
+        If n_bootstrap_ci is set: dict with keys 'mean', 'ci_low', 'ci_high',
+        'std', 'n_bootstraps', 'ci_level'.
     
     Examples
     --------
@@ -88,11 +98,9 @@ def perturbation_stability(
     >>> # Standard stability
     >>> stability = perturbation_stability(X_ctrl, X_pert, method='standard')
     >>> 
-    >>> # Whitened (accounts for feature correlations)
-    >>> stability_w = perturbation_stability(X_ctrl, X_pert, method='whitened')
-    >>> 
-    >>> # k-NN (for heterogeneous control populations)
-    >>> stability_knn = perturbation_stability(X_ctrl, X_pert, method='knn', k=50)
+    >>> # With bootstrap CI
+    >>> result = perturbation_stability(X_ctrl, X_pert, n_bootstrap_ci=1000)
+    >>> print(f"{result['mean']:.3f} [{result['ci_low']:.3f}, {result['ci_high']:.3f}]")
     
     Notes
     -----
@@ -108,6 +116,14 @@ def perturbation_stability(
     """
     X_control = np.asarray(X_control, dtype=np.float64)
     X_perturbed = np.asarray(X_perturbed, dtype=np.float64)
+
+    if n_bootstrap_ci is not None:
+        return bootstrap_ci_bio(
+            perturbation_stability, n_bootstrap_ci, ci, seed,
+            X_control, X_perturbed,
+            method=method, metric=metric, k=k,
+            regularization=regularization, max_samples=max_samples,
+        )
     
     if X_control.shape[1] != X_perturbed.shape[1]:
         raise ValueError(
@@ -278,8 +294,11 @@ def compute_stability(
 def perturbation_effect_size(
     X_control: np.ndarray,
     X_perturbed: np.ndarray,
-    metric: Literal["euclidean", "cohen"] = "euclidean"
-) -> float:
+    metric: Literal["euclidean", "cohen"] = "euclidean",
+    n_bootstrap_ci: Optional[int] = None,
+    ci: float = 0.95,
+    seed: Optional[int] = None,
+) -> Union[float, dict]:
     """
     Compute the magnitude of the perturbation effect.
     
@@ -294,14 +313,30 @@ def perturbation_effect_size(
            Use this for geometric plots (Stability vs Magnitude).
         - 'cohen': Standardized effect size (Magnitude / Pooled SD).
            Use this for statistical power analysis.
+    n_bootstrap_ci : int, optional
+        If provided, compute bootstrap confidence interval by resampling
+        control and perturbed populations this many times.
+    ci : float, default=0.95
+        Confidence level for the interval.
+    seed : int, optional
+        Random seed for bootstrap reproducibility.
     
     Returns
     -------
-    float
-        The calculated magnitude/effect size.
+    float or dict
+        If n_bootstrap_ci is None: the calculated magnitude/effect size.
+        If n_bootstrap_ci is set: dict with keys 'mean', 'ci_low', 'ci_high',
+        'std', 'n_bootstraps', 'ci_level'.
     """
     X_control = np.asarray(X_control, dtype=np.float64)
     X_perturbed = np.asarray(X_perturbed, dtype=np.float64)
+
+    if n_bootstrap_ci is not None:
+        return bootstrap_ci_bio(
+            perturbation_effect_size, n_bootstrap_ci, ci, seed,
+            X_control, X_perturbed,
+            metric=metric,
+        )
     
     control_centroid = np.mean(X_control, axis=0)
     perturbed_centroid = np.mean(X_perturbed, axis=0)

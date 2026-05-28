@@ -38,3 +38,15 @@ robust to monotone transformations.
 .. code-block:: python
 
    similarity = sim.rdm_similarity(X, Y, metric='cosine', method='spearman')
+
+Bootstrap confidence intervals
+------------------------------
+
+All similarity metrics support optional bootstrap CIs via ``n_bootstrap_ci``.
+Both representations are resampled with the same indices (paired bootstrap).
+See :doc:`bootstrap_ci` for full details.
+
+.. code-block:: python
+
+   result = sim.cka(X, Y, n_bootstrap_ci=1000, seed=320)
+   print(f"{result['mean']:.3f} [{result['ci_low']:.3f}, {result['ci_high']:.3f}]")

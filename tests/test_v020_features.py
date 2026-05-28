@@ -31,7 +31,7 @@ requires_sklearn = pytest.mark.skipif(
 @pytest.fixture
 def binary_separated():
     """Two well-separated Gaussian blobs."""
-    rng = np.random.default_rng(42)
+    rng = np.random.default_rng(320)
     X = np.vstack([
         rng.standard_normal((100, 20)),
         rng.standard_normal((100, 20)) + 4,
@@ -43,7 +43,7 @@ def binary_separated():
 @pytest.fixture
 def binary_overlapping():
     """Two barely-separated Gaussian blobs (noisy)."""
-    rng = np.random.default_rng(42)
+    rng = np.random.default_rng(320)
     X = np.vstack([
         rng.standard_normal((100, 20)),
         rng.standard_normal((100, 20)) + 0.3,
@@ -55,7 +55,7 @@ def binary_overlapping():
 @pytest.fixture
 def ctrl_pert_coherent():
     """Control + coherently-shifted perturbation."""
-    rng = np.random.default_rng(42)
+    rng = np.random.default_rng(320)
     X_ctrl = rng.standard_normal((400, 40))
     shift = rng.standard_normal(40)
     X_pert = X_ctrl[:200] + shift + rng.standard_normal((200, 40)) * 0.1
@@ -65,7 +65,7 @@ def ctrl_pert_coherent():
 @pytest.fixture
 def ctrl_pert_random():
     """Control + randomly-shifted perturbation (incoherent)."""
-    rng = np.random.default_rng(42)
+    rng = np.random.default_rng(320)
     X_ctrl = rng.standard_normal((400, 40))
     X_pert = rng.standard_normal((200, 40))
     return X_ctrl, X_pert
@@ -80,7 +80,7 @@ class TestClassSeparationRatio:
     def test_well_separated_high(self, binary_separated):
         """Well-separated classes should yield ratio > 1."""
         X, y = binary_separated
-        ratio = shesha.class_separation_ratio(X, y, n_bootstrap=20, seed=42)
+        ratio = shesha.class_separation_ratio(X, y, n_bootstrap=20, seed=320)
         assert isinstance(ratio, float)
         assert not np.isnan(ratio)
         assert ratio > 1.0
@@ -89,20 +89,20 @@ class TestClassSeparationRatio:
         """Overlapping classes should have a lower ratio than separated ones."""
         X_sep, y = binary_separated
         X_ov, _ = binary_overlapping
-        r_sep = shesha.class_separation_ratio(X_sep, y, n_bootstrap=20, seed=42)
-        r_ov = shesha.class_separation_ratio(X_ov, y, n_bootstrap=20, seed=42)
+        r_sep = shesha.class_separation_ratio(X_sep, y, n_bootstrap=20, seed=320)
+        r_ov = shesha.class_separation_ratio(X_ov, y, n_bootstrap=20, seed=320)
         assert r_sep > r_ov
 
     def test_multiclass(self):
         """Should work with more than 2 classes."""
-        rng = np.random.default_rng(42)
+        rng = np.random.default_rng(320)
         X = np.vstack([
             rng.standard_normal((60, 10)),
             rng.standard_normal((60, 10)) + 4,
             rng.standard_normal((60, 10)) + 8,
         ])
         y = np.array([0] * 60 + [1] * 60 + [2] * 60)
-        ratio = shesha.class_separation_ratio(X, y, n_bootstrap=15, seed=42)
+        ratio = shesha.class_separation_ratio(X, y, n_bootstrap=15, seed=320)
         assert isinstance(ratio, float)
         assert not np.isnan(ratio)
         assert ratio > 1.0
@@ -111,7 +111,7 @@ class TestClassSeparationRatio:
         """Cosine metric variant should also return a valid ratio > 1."""
         X, y = binary_separated
         ratio = shesha.class_separation_ratio(
-            X, y, metric="cosine", n_bootstrap=15, seed=42
+            X, y, metric="cosine", n_bootstrap=15, seed=320
         )
         assert isinstance(ratio, float)
         assert not np.isnan(ratio)
@@ -121,7 +121,7 @@ class TestClassSeparationRatio:
         """Single-class input should return NaN."""
         X = np.random.randn(50, 10)
         y = np.zeros(50, dtype=int)
-        ratio = shesha.class_separation_ratio(X, y, n_bootstrap=10, seed=42)
+        ratio = shesha.class_separation_ratio(X, y, n_bootstrap=10, seed=320)
         assert np.isnan(ratio)
 
     def test_determinism(self, binary_separated):
@@ -149,7 +149,7 @@ class TestLdaStability:
     def test_stable_high(self, binary_separated):
         """Well-separated data should produce high LDA stability."""
         X, y = binary_separated
-        stab = shesha.lda_stability(X, y, n_bootstrap=20, seed=42)
+        stab = shesha.lda_stability(X, y, n_bootstrap=20, seed=320)
         assert isinstance(stab, float)
         assert not np.isnan(stab)
         assert 0.0 <= stab <= 1.0
@@ -157,7 +157,7 @@ class TestLdaStability:
 
     def test_unstable_lower(self, binary_overlapping):
         """Barely-separated data should yield lower stability than clear separation."""
-        rng = np.random.default_rng(42)
+        rng = np.random.default_rng(320)
         X_sep = np.vstack([
             rng.standard_normal((100, 20)),
             rng.standard_normal((100, 20)) + 6,
@@ -166,8 +166,8 @@ class TestLdaStability:
 
         X_ov, _ = binary_overlapping
 
-        stab_sep = shesha.lda_stability(X_sep, y, n_bootstrap=20, seed=42)
-        stab_ov = shesha.lda_stability(X_ov, y, n_bootstrap=20, seed=42)
+        stab_sep = shesha.lda_stability(X_sep, y, n_bootstrap=20, seed=320)
+        stab_ov = shesha.lda_stability(X_ov, y, n_bootstrap=20, seed=320)
         assert stab_sep > stab_ov
 
     def test_multiclass_raises(self):
@@ -187,7 +187,7 @@ class TestLdaStability:
     def test_output_range(self, binary_separated):
         """Output must be in [0, 1]."""
         X, y = binary_separated
-        stab = shesha.lda_stability(X, y, n_bootstrap=10, seed=42)
+        stab = shesha.lda_stability(X, y, n_bootstrap=10, seed=320)
         assert 0.0 <= stab <= 1.0
 
 
@@ -204,9 +204,9 @@ class TestPerturbationStabilityMethodDispatch:
     def test_standard_method_default(self, ctrl_pert_coherent):
         """Default (method='standard') should return the same as explicit call."""
         X_ctrl, X_pert = ctrl_pert_coherent
-        s_default = bio.perturbation_stability(X_ctrl, X_pert, seed=42, max_samples=150)
+        s_default = bio.perturbation_stability(X_ctrl, X_pert, seed=320, max_samples=150)
         s_explicit = bio.perturbation_stability(
-            X_ctrl, X_pert, method="standard", seed=42, max_samples=150
+            X_ctrl, X_pert, method="standard", seed=320, max_samples=150
         )
         assert s_default == s_explicit
 
@@ -214,10 +214,10 @@ class TestPerturbationStabilityMethodDispatch:
         """method='whitened' should equal perturbation_stability_whitened."""
         X_ctrl, X_pert = ctrl_pert_coherent
         s_dispatch = bio.perturbation_stability(
-            X_ctrl, X_pert, method="whitened", seed=42, max_samples=150
+            X_ctrl, X_pert, method="whitened", seed=320, max_samples=150
         )
         s_standalone = bio.perturbation_stability_whitened(
-            X_ctrl, X_pert, seed=42, max_samples=150
+            X_ctrl, X_pert, seed=320, max_samples=150
         )
         assert abs(s_dispatch - s_standalone) < 1e-10
 
@@ -228,10 +228,10 @@ class TestPerturbationStabilityMethodDispatch:
         # Must pass metric explicitly: perturbation_stability defaults to "cosine"
         # while perturbation_stability_knn defaults to "euclidean".
         s_dispatch = bio.perturbation_stability(
-            X_ctrl, X_pert, method="knn", metric="euclidean", k=30, seed=42, max_samples=150
+            X_ctrl, X_pert, method="knn", metric="euclidean", k=30, seed=320, max_samples=150
         )
         s_standalone = bio.perturbation_stability_knn(
-            X_ctrl, X_pert, metric="euclidean", k=30, seed=42, max_samples=150
+            X_ctrl, X_pert, metric="euclidean", k=30, seed=320, max_samples=150
         )
         assert abs(s_dispatch - s_standalone) < 1e-10
 
@@ -247,7 +247,7 @@ class TestPerturbationStabilityMethodDispatch:
         X_ctrl, X_pert = ctrl_pert_coherent
         for method in ("standard", "whitened", "knn"):
             score = bio.perturbation_stability(
-                X_ctrl, X_pert, method=method, k=30, seed=42, max_samples=150
+                X_ctrl, X_pert, method=method, k=30, seed=320, max_samples=150
             )
             assert score > 0.4, f"method='{method}' gave low score: {score:.3f}"
 
@@ -258,10 +258,10 @@ class TestPerturbationStabilityMethodDispatch:
         _, X_pert_rand = ctrl_pert_random
         for method in ("standard", "whitened", "knn"):
             s_coh = bio.perturbation_stability(
-                X_ctrl, X_pert_coh, method=method, k=30, seed=42, max_samples=150
+                X_ctrl, X_pert_coh, method=method, k=30, seed=320, max_samples=150
             )
             s_rand = bio.perturbation_stability(
-                X_ctrl, X_pert_rand, method=method, k=30, seed=42, max_samples=150
+                X_ctrl, X_pert_rand, method=method, k=30, seed=320, max_samples=150
             )
             assert s_coh > s_rand, (
                 f"method='{method}': coherent ({s_coh:.3f}) not > random ({s_rand:.3f})"
@@ -284,7 +284,7 @@ class TestCkaEdgeCases:
 
     def test_cka_scale_invariance(self):
         """CKA should be invariant to isotropic scaling."""
-        rng = np.random.default_rng(42)
+        rng = np.random.default_rng(320)
         X = rng.standard_normal((80, 30))
         Y = rng.standard_normal((80, 20))
         cka_base = sim.cka_linear(X, Y)
@@ -301,7 +301,7 @@ class TestCkaEdgeCases:
 
     def test_cka_debiased_self_similarity(self):
         """cka_debiased(X, X) should be close to 1.0."""
-        rng = np.random.default_rng(42)
+        rng = np.random.default_rng(320)
         X = rng.standard_normal((60, 20))
         val = sim.cka_debiased(X, X)
         assert abs(val - 1.0) < 0.05
@@ -317,7 +317,7 @@ class TestCkaEdgeCases:
 
     def test_cka_different_feature_dims_ok(self):
         """CKA should work when X and Y have different feature dimensions."""
-        rng = np.random.default_rng(42)
+        rng = np.random.default_rng(320)
         X = rng.standard_normal((100, 512))
         Y = rng.standard_normal((100, 32))
         val = sim.cka_linear(X, Y)
@@ -356,7 +356,7 @@ class TestProcrustesEdgeCases:
 
     def test_no_center_no_scale(self):
         """Procrustes with center=False, scale=False should still return float in [0,1]."""
-        rng = np.random.default_rng(42)
+        rng = np.random.default_rng(320)
         X = rng.standard_normal((60, 10))
         Y = rng.standard_normal((60, 10))
         result = sim.procrustes_similarity(X, Y, center=False, scale=False)
@@ -379,7 +379,7 @@ class TestRdmSimilarityEdgeCases:
 
     def test_self_similarity_high(self):
         """RDM(X, X) should be very close to 1.0."""
-        rng = np.random.default_rng(42)
+        rng = np.random.default_rng(320)
         X = rng.standard_normal((80, 20))
         val = sim.rdm_similarity(X, X)
         assert val > 0.99

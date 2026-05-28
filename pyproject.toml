@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "shesha-geometry"
-version = "0.2.18"
+version = "0.2.2"
 description = "Self-consistency metrics for representational stability analysis"
 readme = "README_PYPI.md"
 license = {text = "MIT"}
@@ -16,6 +16,7 @@ keywords = [
     "shesha",     
     "geometry",    
     "representation learning",
+    "representation analysis",
     "neural networks", 
     "geometric stability",
     "geometric analysis",
