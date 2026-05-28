@@ -2,7 +2,7 @@
 
 All notable changes to the `shesha` package will be documented in this file.
 
-## [0.2.2] - 2026-05-28
+## [0.2.20] - 2026-05-28
 
 ### Added
 
