@@ -348,6 +348,46 @@ def cka(
 # Procrustes Similarity
 # =============================================================================
 
+def _validate_procrustes_inputs(
+    X: np.ndarray, Y: np.ndarray
+) -> Optional[float]:
+    """Return np.nan if inputs are invalid, else None (meaning inputs are ok)."""
+    if X.shape != Y.shape:
+        raise ValueError(
+            f"X and Y must have same shape for Procrustes: "
+            f"X is {X.shape}, Y is {Y.shape}"
+        )
+    if np.any(np.isnan(X)) or np.any(np.isnan(Y)):
+        return np.nan
+    if np.any(np.isinf(X)) or np.any(np.isinf(Y)):
+        return np.nan
+    X_std = X.std(axis=0)
+    Y_std = Y.std(axis=0)
+    if np.any(X_std < 1e-12) or np.any(Y_std < 1e-12):
+        return "degenerate"
+    return None
+
+
+def _preprocess_procrustes(
+    X: np.ndarray, Y: np.ndarray, center: bool, scale: bool
+) -> Optional[tuple]:
+    """Center and/or scale X and Y. Returns (X_out, Y_out) or None if degenerate."""
+    if center:
+        X = X - X.mean(axis=0)
+        Y = Y - Y.mean(axis=0)
+
+    X_norm = np.linalg.norm(X, "fro")
+    Y_norm = np.linalg.norm(Y, "fro")
+    if X_norm < 1e-12 or Y_norm < 1e-12:
+        return None
+
+    if scale:
+        X = X / X_norm
+        Y = Y / Y_norm
+
+    return X, Y
+
+
 def procrustes_similarity(
     X: np.ndarray,
     Y: np.ndarray,
@@ -427,72 +467,28 @@ def procrustes_similarity(
     try:
         X = np.asarray(X, dtype=np.float64)
         Y = np.asarray(Y, dtype=np.float64)
-        
-        if X.shape != Y.shape:
-            raise ValueError(
-                f"X and Y must have same shape for Procrustes: "
-                f"X is {X.shape}, Y is {Y.shape}"
-            )
-        
-        # Check for NaN/Inf values
-        if np.any(np.isnan(X)) or np.any(np.isnan(Y)):
-            return np.nan
-        if np.any(np.isinf(X)) or np.any(np.isinf(Y)):
-            return np.nan
-        
-        # Check for degenerate cases (all-zero or constant columns)
-        X_std = X.std(axis=0)
-        Y_std = Y.std(axis=0)
-        if np.any(X_std < 1e-12) or np.any(Y_std < 1e-12):
-            # Add small noise to break degeneracy
+
+        status = _validate_procrustes_inputs(X, Y)
+        if status == "degenerate":
             rng = np.random.default_rng(320)
             X = X + rng.normal(0, 1e-8, X.shape)
             Y = Y + rng.normal(0, 1e-8, Y.shape)
-        
-        if center:
-            # Center the data
-            X_mean = X.mean(axis=0)
-            Y_mean = Y.mean(axis=0)
-            X_centered = X - X_mean
-            Y_centered = Y - Y_mean
-        else:
-            X_centered = X.copy()
-            Y_centered = Y.copy()
-        
-        # Check if matrices are degenerate after centering
-        X_norm = np.linalg.norm(X_centered, 'fro')
-        Y_norm = np.linalg.norm(Y_centered, 'fro')
-        
-        if X_norm < 1e-12 or Y_norm < 1e-12:
+        elif status is not None:
+            return status  # np.nan
+
+        result = _preprocess_procrustes(X, Y, center, scale)
+        if result is None:
             return np.nan
-        
-        if scale:
-            # Scale to unit Frobenius norm
-            X_scaled = X_centered / X_norm
-            Y_scaled = Y_centered / Y_norm
-        else:
-            X_scaled = X_centered
-            Y_scaled = Y_centered
-        
-        # Find optimal orthogonal transformation
-        R, scale_factor = orthogonal_procrustes(X_scaled, Y_scaled)
-        
-        # Apply transformation
-        Y_aligned = Y_scaled @ R
-        
-        # Compute disparity (mean squared error)
-        disparity = np.mean((X_scaled - Y_aligned) ** 2)
-        
-        # Convert disparity to similarity
-        # Disparity ranges from 0 (perfect) to ~2 (opposite)
-        # Map to similarity in [0, 1]
+        X_scaled, Y_scaled = result
+
+        R, _ = orthogonal_procrustes(X_scaled, Y_scaled)
+        disparity = np.mean((X_scaled - Y_scaled @ R) ** 2)
         similarity = 1.0 - min(disparity / 2.0, 1.0)
-        
+
         if not np.isfinite(similarity):
             return np.nan
-        
         return float(np.clip(similarity, 0.0, 1.0))
-    
+
     except (ValueError, np.linalg.LinAlgError):
         return np.nan
 
