@@ -11,7 +11,7 @@ tags:
 authors:
   - name: Prashant C. Raju
     orcid: 0000-0003-3778-4788
-    affiliation: 1
+    affiliation: "1"
 affiliations:
   - name: Independent Researcher
     index: 1
@@ -23,7 +23,7 @@ bibliography: paper.bib
 
 Analysis of learned representations has historically focused on **similarity**, measuring how closely internal embeddings align with external references. However, similarity only reveals *what* is represented, not whether that structure is robust to internal or external perturbations. `Shesha` is an open-source Python framework designed to quantify **geometric stability**, a distinct dimension of representational quality that measures how reliably a model's internal geometry holds under perturbation.
 
-The framework unifies three lines of research into a single package: (1) foundational unsupervised stability metrics for general representation analysis and LLM drift detection [@raju2026geometric]; (2) supervised alignment metrics and LLM steerability prediction [@raju2026canary]; and (3) geometric coherence analysis for single-cell perturbation biology experiments [@raju2026crispr]. Implementations are available in `shesha.core` (general ML) and `shesha.bio` (single-cell biology with native `AnnData` support).
+The framework unifies three lines of research into a single package: (1) foundational unsupervised stability metrics for general representation analysis and LLM drift detection [@raju2026geometric]; (2) supervised alignment metrics and LLM steerability prediction [@raju2026canary]; and (3) geometric coherence analysis for single-cell perturbation biology experiments [@raju2026crispr]. Implementations are available in `shesha.core` (ML) and `shesha.bio` (single-cell biology with native `AnnData` support).
 
 # Mathematical Framework
 
@@ -37,21 +37,21 @@ $$\text{Shesha}(\mathbf{X}) = \rho_s\bigl(\text{vec}(\mathbf{D}^{(1)}), \text{ve
 
 where $\text{vec}(\cdot)$ extracts the upper triangular elements. The choice of how views are constructed defines three families of variants, each grounded in a distinct paper.
 
-## Unsupervised Variants (Foundations Paper [@raju2026geometric])
+## Unsupervised Variants (Foundations Paper)
 
-**Feature-Split Shesha** (`feature_split`) assesses internal geometric consistency by partitioning feature dimensions into random disjoint halves:
+$\text{Shesha}_{\text{FS}}$ (`feature_split`) assesses internal geometric consistency by partitioning feature dimensions into random disjoint halves:
 
 $$\text{Shesha}_{\text{FS}}(\mathbf{X}) = \frac{1}{K} \sum_{k=1}^{K} \rho_s\bigl(\text{vec}(\mathbf{D}_{\mathcal{F}_k^{(1)}}), \text{vec}(\mathbf{D}_{\mathcal{F}_k^{(2)}})\bigr)$$
 
 where $\mathcal{F}_k^{(1)}, \mathcal{F}_k^{(2)} \subset \{1, \ldots, d\}$ are disjoint feature partitions at split $k$, averaged over $K=30$ random splits. High values indicate that geometric structure is evenly distributed across dimensions rather than concentrated in a few dominant features.
 
-**Sample-Split Shesha** (`sample_split`) measures robustness to data variation by partitioning samples into disjoint subsets and comparing RDMs computed on each. This variant assesses whether the distance structure generalizes across different subsets of the data.
+$\text{Shesha}_{\text{SS}}$ (`sample_split`) measures robustness to data variation by partitioning samples into disjoint subsets and comparing RDMs computed on each. This variant assesses whether the distance structure generalizes across different subsets of the data.
 
-**Anchor Stability** (`anchor_stability`) measures consistency of distance profiles from fixed anchor points, providing an efficient approximation for large-scale datasets where full $O(n^2)$ RDM computation is intractable.
+$\text{Shesha}_{\text{anc}}$ (`anchor_stability`) measures consistency of distance profiles from fixed anchor points, providing an efficient approximation for large-scale datasets where full $O(n^2)$ RDM computation is intractable.
 
-## Supervised Variants (LLM & Steerability Paper [@raju2026canary])
+## Supervised Variants (LLM Paper)
 
-**Supervised Shesha** (`supervised_alignment`) quantifies task-aligned stability when class labels $\mathbf{y}$ are available:
+$\text{Shesha}_{\text{sup}}$ (`supervised_alignment`) quantifies task-aligned stability when class labels $\mathbf{y}$ are available:
 
 $$\text{Shesha}_{\text{sup}}(\mathbf{X}, \mathbf{y}) = \rho_s\bigl(\text{vec}(\mathbf{D}_\mathbf{X}), \text{vec}(\mathbf{D}_\mathbf{y})\bigr)$$
 
@@ -59,9 +59,9 @@ where $\mathbf{D}_\mathbf{y}$ encodes label dissimilarity. This variant was intr
 
 Additional supervised metrics introduced in this line of work include the variance ratio (between-class to total variance), class separation ratio (between-class to within-class distances), and LDA subspace stability (consistency of discriminant direction under resampling, shown to predict steerability with $\rho = 0.89$–$0.96$ [@raju2026canary]).
 
-## Biological Perturbation Variants (CRISPR Paper [@raju2026crispr])
+## Biological Perturbation Variants (CRISPR Paper)
 
-**Perturbation Stability** (`perturbation_stability` in `shesha.bio`) measures directional consistency of biological perturbation effects:
+$\text{Shesha}_{\text{pert}}$ (`perturbation_stability` in `shesha.bio`) measures directional consistency of biological perturbation effects:
 
 $$\text{Shesha}_{\text{pert}} = \frac{1}{|\mathcal{P}|} \sum_{i \in \mathcal{P}} \frac{(\mathbf{x}_i - \boldsymbol{\mu}_{\text{ctrl}})^\top \bar{\mathbf{d}}}{\|\mathbf{x}_i - \boldsymbol{\mu}_{\text{ctrl}}\| \|\bar{\mathbf{d}}\|}$$
 
@@ -69,64 +69,71 @@ where $\bar{\mathbf{d}}$ is the mean shift direction from control to perturbed p
 
 All variants use Spearman correlation by default (robust to monotonic transformations and outliers) and subsample to $n_{\max}=1600$ when computational constraints require.
 
+![**A**: Core geometric stability computation for $\text{Shesha}_{\text{FS}}$: the representation matrix $\mathbf{X}$ is split into complementary feature subsets, RDMs are computed on each, and their Spearman rank correlation yields the stability score. **B**: Modular software architecture of `shesha-geometry`, showing the dependency structure across `shesha.core`, `shesha.bio`, and the scverse ecosystem.](overview.png){ width=100% }
+
 # Statement of Need
 
-Geometric stability is an **intrinsic property** of a representation's manifold that measures how consistently it preserves internal geometric structure across varied feature subsets or under perturbation. Unlike similarity metrics such as Centered Kernel Alignment (CKA) [@kornblith2019similarity] and Representational Similarity Analysis (RSA) [@Kriegeskorte2008]—which are **extrinsic properties** measuring how one representation aligns with another—stability is reference-independent. It asks whether the internal "geometry" of the representational space is robust or brittle. Shesha provides a unified API for geometric stability analysis, with applications spanning representation learning [@raju2026geometric], model steerability and drift detection [@raju2026canary], and single-cell perturbation biology [@raju2026crispr].
+Geometric stability is an **intrinsic property** of a representation's manifold that measures how consistently it preserves internal geometric structure across varied feature subsets or under perturbation. Unlike similarity metrics such as CKA [@kornblith2019similarity] and RSA [@Kriegeskorte2008], which are **extrinsic properties** measuring how one representation aligns with another—stability is reference-independent. It asks whether the internal "geometry" of the representational space is robust or brittle. Shesha provides a unified API for geometric stability analysis, with applications spanning representation learning [@raju2026geometric], model steerability and drift detection [@raju2026canary], and single-cell perturbation biology [@raju2026crispr].
 
-## Stability vs. Similarity: A Mechanistic Distinction
+## Stability vs. Similarity: A Distinction
 
-A library analogy illustrates this distinction: suppose every book in a library is randomly moved to different shelves while the overall catalog remains unchanged. An inventory check would verify that everything is still present and the collection is unchanged. However, the organizational structure that allows readers to locate specific books has collapsed. Similarity metrics function like the inventory check by verifying that representational content **exists**. Geometric stability plays the role of the index by checking whether the functional relationships that make features discoverable and interpretable remain **coherent**.
+Consider two libraries holding identical collections. A content audit confirms they are equivalent—the same books are in both. Now suppose one library strictly maintains its ordering, but in the other, a reader returns a few books to the wrong shelves. In the first, the indexing system is robust: nearby books remain topically related and retrieval degrades only slightly. In the second, even these minor displacements cascade: the shelving logic is brittle and locating a book becomes unreliable. Though the inventories remain identical, the libraries are no longer functionally equivalent. For learned representations, geometric stability measures exactly this resilience. Standard similarity metrics confirm that two representations contain the same features, but fail to detect when the fine-grained relationships between them fracture under minor perturbation.
 
-This distinction is mechanistically grounded: similarity metrics often collapse when the top principal components (the dominant variance) are removed, whereas geometric stability retains sensitivity to fine-grained manifold structure even after filtering out the dominant axes. Empirically, stability and similarity are uncorrelated ($\rho \approx 0.01$) across diverse domains [@raju2026geometric], meaning a model can appear highly similar to a reference while having a completely degraded internal geometry.
 
 ## Critical Gaps Addressed by Shesha
 
 `Shesha` addresses three key tooling challenges, each motivated by a distinct research application:
 
-1. **Foundational Stability Analysis** [@raju2026geometric]: provides unsupervised, reference-free metrics (`feature_split`, `sample_split`, `anchor_stability`, `rdm_drift`) for evaluating manifold consistency across language, vision, and general-purpose embeddings. These overcome the limitations of rigid distance metrics like Procrustes [@Schnemann1966] by filtering out non-functional variance.
+1. **Foundational Stability Analysis** [@raju2026geometric]: unsupervised, reference-free metrics (`feature_split`, `sample_split`, `anchor_stability`, `rdm_drift`) for manifold consistency across language, vision, and general-purpose embeddings, overcoming rigid distance metrics like Procrustes [@Schnemann1966].
 
-2. **LLM Safety and Steerability** [@raju2026canary]: the supervised variant and LDA stability metric act as a highly sensitive "geometric canary" that predicts whether an LLM's representations are steerable and detects early functional degradation during fine-tuning or alignment interventions [@Touvron2023LLaMAOA]. Evaluating intrinsic geometric robustness of vision models (e.g., DINOv2 [@oquab2024dinov]) also falls within this domain.
+2. **LLM Safety and Steerability** [@raju2026canary]: the supervised variant and LDA stability metric act as a highly sensitive "geometric canary" that predicts whether an LLM's representations are steerable and detects early functional degradation during fine-tuning or alignment interventions [@Touvron2023LLaMAOA]. Evaluating intrinsic geometric robustness of vision models also falls within this domain.
 
-3. **Biological Coherence in CRISPR Screens** [@raju2026crispr]: the `shesha.bio` module enables native processing of single-cell perturbation data, quantifying the structural coherence of transcriptomic shifts to isolate reproducible state-space trajectories from stochastic noise.
+3. **Biological Coherence** [@raju2026crispr]: the `shesha.bio` module enables native processing of single-cell perturbation data, quantifying the structural coherence of transcriptomic shifts to isolate reproducible state-space trajectories from stochastic noise.
 
-`Shesha` provides researchers with a unified API across all three domains. The package includes six interactive tutorials (each < 5 minutes to run) covering LLM embeddings, steering vectors, vision models, representational drift, training dynamics, and single-cell CRISPR analysis.
+`Shesha` provides a unified API across all three domains.
 
 # State of the Field
 
-Existing tools for representational analysis, such as `rsatoolbox` [@vandenBosch2025] for RSA, `scipy` [@2020SciPy-NMeth] for Procrustes, and various CKA implementations, focus primarily on measuring alignment between two different representations. While these are vital for model comparison, they lack native support for internal self-consistency testing—the ability to measure whether a model's own geometry remains stable under controlled perturbations.
+Existing tools for representational analysis, such as `rsatoolbox` [@vandenBosch2025] for RSA, `scipy` [@2020SciPy-NMeth] for Procrustes, and various CKA implementations, focus primarily on measuring alignment between two different representations. While these are vital for model comparison, they lack native support for internal self-consistency testing: the ability to measure whether a model's own geometry remains stable under controlled perturbations.
 
 `Shesha` fills this niche by providing specialized methods like `feature_split` (which partitions feature dimensions to test geometric coherence) and `anchor_stability` (which measures consistency across data subsamples). Unlike general-purpose manifold learning tools (e.g., `UMAP` [@McInnes2018], `scikit-learn` [@scikit-learn]), `Shesha` is specifically optimized for high-dimensional stability testing at scale. It also includes a dedicated `shesha.bio` module with high-level wrappers for `AnnData` objects [@Virshup2023] [@Virshup2024], making it directly compatible with the single-cell biology ecosystem used by tools like `scanpy` [@Wolf2018] and `pertpy` [@Heumos2025].
 
 # Software Design
 
-`Shesha` is built around a unified API that balances computational performance with research flexibility:
+`Shesha` is built around a unified API with several deliberate design trade-offs:
 
-- **Modular Architecture**: The package is organized into three main components, reflecting the three research papers: core unsupervised metrics (`shesha.core`: `feature_split`, `sample_split`, `anchor_stability`, `rdm_drift` [@raju2026geometric]), supervised alignment and steerability methods (`supervised_alignment`, `lda_stability`, `variance_ratio`, `class_separation_ratio` [@raju2026canary]), and a specialized biological perturbation module (`shesha.bio`: `perturbation_stability`, `compute_stability`, `compute_magnitude` [@raju2026crispr]).
+- **Modular Architecture**: The three-module structure (`shesha.core`, `shesha.bio`, `shesha.sim`) reflects a dependency isolation strategy: `shesha.bio` requires `anndata` and encodes perturbation-biology semantics (control/treated populations, AnnData accessors), while `shesha.core` carries only NumPy/SciPy dependencies. This allows ML researchers to use stability metrics without the bioinformatics stack, and isolates domain-specific logic from general metrics.
 
-- **Computational Efficiency**: Core RDM operations are optimized for high-dimensional arrays using vectorized NumPy and SciPy routines. To ensure $O(n^2)$ pairwise distance calculations remain tractable for large datasets, the package implements intelligent subsampling strategies (via the `max_samples` parameter) that preserve statistical properties while reducing computational burden.
+- **Computational Design**: Spearman rank correlation is used in preference to Pearson because RDM entries span heterogeneous scales across metrics and datasets; rank transformation provides invariance to monotonic rescaling and robustness to the outlier distances common in high-dimensional spaces. The $O(n^2)$ pairwise distance bottleneck is addressed via `max_samples` (default 1600): random subsampling preserves RDM rank structure at a fraction of memory cost, with the default chosen empirically to balance statistical fidelity and computational cost for typical single-cell dataset sizes.
 
-- **Ecosystem Integration**: The software relies on the standard scientific Python stack (`NumPy` [@harris2020array], `SciPy` [@2020SciPy-NMeth], `scikit-learn` [@scikit-learn]) and provides seamless integration with the bioinformatics ecosystem. The `shesha.bio` module works natively with `AnnData` [@Virshup2023] [@Virshup2024] objects and is compatible with `scanpy` [@Wolf2018] and `pertpy` [@Heumos2025] workflows, enabling researchers to incorporate stability analysis into existing single-cell pipelines without additional data preprocessing.
+- **Self-Consistency Estimator**: Split-half self-consistency was chosen over test-retest reliability because it requires only a single pass over a pre-computed embedding matrix—no repeated measurements or access to training infrastructure—making stability assessment applicable to any archived representation.
 
-# Applications
+- **Ecosystem Integration**: The software relies on the standard scientific Python stack (`NumPy` [@harris2020array], `SciPy` [@2020SciPy-NMeth], `scikit-learn` [@scikit-learn]). The `shesha.bio` module works natively with `AnnData` [@Virshup2023] [@Virshup2024] objects and is compatible with `scanpy` [@Wolf2018] and `pertpy` [@Heumos2025] workflows, enabling stability analysis in existing single-cell pipelines without additional preprocessing.
 
-**General Representation Analysis** [@raju2026geometric]: In computer vision and natural language processing, researchers use `Shesha`'s core unsupervised metrics to evaluate manifold consistency across varied model architectures. The framework enables systematic comparison of how different training paradigms impact internal geometric robustness, independently of performance on external similarity benchmarks.
+# Research Impact
 
-**LLM Alignment and Steerability** [@raju2026canary]: The supervised metrics and LDA stability score predict whether a model's representations will respond coherently to steering interventions. This provides a fast, geometry-based diagnostic for alignment researchers working with fine-tuned or RLHF-trained models [@Touvron2023LLaMAOA], complementing behavioral evaluations with an intrinsic structural signal.
+`Shesha` has been used as the primary analysis framework in three lines of published research, each corresponding to a distinct module. All analyses in [@raju2026geometric], [@raju2026canary], and [@raju2026crispr] were conducted using `Shesha`, with reproducible artifacts available as six Colab tutorials (each executable in under 5 minutes).
 
-**Single-Cell CRISPR Perturbation Analysis** [@raju2026crispr]: The `shesha.bio` module natively interfaces with AnnData objects to streamline the analysis of large-scale single-cell datasets, such as the Norman et al. (2019) CRISPRa dataset [@norman2019exploring]. The framework provides specialized functions to evaluate the stability of genetic regulators, allowing researchers to distinguish reproducible biological perturbations from stochastic transcriptomic noise without complex preprocessing pipelines.
+**General Representation Analysis** [@raju2026geometric]: `Shesha`'s unsupervised metrics were used to evaluate manifold consistency across varied model architectures, demonstrating that geometric stability predicts generalization independently of benchmark performance.
 
-The package is publicly available on PyPI as `shesha-geometry`, archived on Zenodo [@raju2026shesha], and features comprehensive documentation. All geometric stability analyses in [@raju2026geometric], [@raju2026canary], and [@raju2026crispr] were conducted using `Shesha`. Six interactive Colab tutorials allow researchers to explore LLM embeddings, steering vectors, vision model architectures, representational drift, training dynamics, and single-cell CRISPR analysis, each designed to be executable in under 5 minutes.
+**LLM Alignment and Steerability** [@raju2026canary]: The LDA stability score was shown to predict steerability of fine-tuned and RLHF-trained LLMs [@Touvron2023LLaMAOA] with $\rho = 0.89$–$0.96$, providing a fast geometry-based diagnostic that complements behavioral evaluations.
+
+**Single-Cell Perturbation Analysis** [@raju2026crispr]: `shesha.bio` was used to distinguish reproducible genetic perturbation effects from stochastic transcriptomic noise in large-scale CRISPR screens, demonstrating applicability beyond ML to experimental biology.
+
+The package is available on PyPI (`shesha-geometry`) and archived on Zenodo [@raju2026shesha] for long-term reproducibility.
 
 
 # AI Usage Disclosure
 
 In accordance with JOSS AI policy, the author discloses the use of generative AI during the development of this software and paper:
 
-- **Software Creation & Refactoring**: Claude (Sonnet 4.5/4.6 and Opus 4.5/4.6) and Gemini (3/3.1 Pro) were used to refactor experimental research scripts into a production-grade Python package, including implementation of design patterns, code optimization for readability, and generation of `pytest` scaffolding.
+- **Software Creation & Refactoring**: Claude (Sonnet and Opus) and Gemini were used to refactor experimental research scripts into a production-grade Python package, including implementation of design patterns, code optimization for readability, and generation of `pytest` scaffolding.
 - **Debugging & Documentation**: AI assistants supported identification of edge cases in high-dimensional distance calculations and assisted in drafting docstrings and API reference material.
-- **Formatting & Manuscript Editing**: AI tools helped with LaTeX/Markdown formatting and copy-editing of the paper text.
+- **Formatting & Manuscript Editing**: AI tools helped with formatting and copy-editing of the paper text.
 - **Visual Assets**: The software logo was generated using Nano Banana Pro.
 
 **Confirmation of Review**: The author has reviewed, edited, and validated all AI-assisted outputs to ensure technical accuracy and adherence to the core geometric principles of the Shesha framework. All core design decisions, architectural choices, and research insights are attributable to the human author, who maintains full responsibility for the code's integrity and the manuscript's content.
 
 # References
+
+
