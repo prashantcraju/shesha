@@ -57,7 +57,7 @@ $$\text{Shesha}_{\text{sup}}(\mathbf{X}, \mathbf{y}) = \rho_s\bigl(\text{vec}(\m
 
 where $\mathbf{D}_\mathbf{y}$ encodes label dissimilarity. This variant was introduced to predict steerability and detect functional drift in large language models [@Touvron2023LLaMAOA], where ground-truth labels from steering tasks serve as the reference RDM.
 
-Additional supervised metrics introduced in this line of work include the variance ratio (between-class to total variance), class separation ratio (between-class to within-class distances), and LDA subspace stability (consistency of discriminant direction under resampling, shown to predict steerability with $\rho = 0.89$–$0.96$ [@raju2026canary]).
+Additional supervised metrics introduced in this line of work include the variance ratio (between-class to total variance), class separation ratio (between-class to within-class distances), and LDA subspace stability (consistency of discriminant direction under resampling, was previously shown to predict steerability with $\rho = 0.89$–$0.96$ [@raju2026canary]).
 
 ## Biological Perturbation Variants (CRISPR Paper)
 
@@ -84,11 +84,11 @@ Consider two libraries holding identical collections. A content audit confirms t
 
 `Shesha` addresses three key tooling challenges, each motivated by a distinct research application:
 
-1. **Foundational Stability Analysis** [@raju2026geometric]: unsupervised, reference-free metrics (`feature_split`, `sample_split`, `anchor_stability`, `rdm_drift`) for manifold consistency across language, vision, and general-purpose embeddings, overcoming rigid distance metrics like Procrustes [@Schnemann1966].
+1. **Foundational Stability Analysis**: unsupervised, reference-free metrics (`feature_split`, `sample_split`, `anchor_stability`, `rdm_drift`) for manifold consistency across language, vision, and general-purpose embeddings, overcoming rigid distance metrics like Procrustes [@Schnemann1966].
 
-2. **LLM Safety and Steerability** [@raju2026canary]: the supervised variant and LDA stability metric act as a highly sensitive "geometric canary" that predicts whether an LLM's representations are steerable and detects early functional degradation during fine-tuning or alignment interventions [@Touvron2023LLaMAOA]. Evaluating intrinsic geometric robustness of vision models also falls within this domain.
+2. **LLM Safety and Steerability**: the supervised variant and LDA stability metric act as a highly sensitive "geometric canary" that predicts whether an LLM's representations are steerable and detects early functional degradation during fine-tuning or alignment interventions [@Touvron2023LLaMAOA]. Evaluating intrinsic geometric robustness of vision models also falls within this domain.
 
-3. **Biological Coherence** [@raju2026crispr]: the `shesha.bio` module enables native processing of single-cell perturbation data, quantifying the structural coherence of transcriptomic shifts to isolate reproducible state-space trajectories from stochastic noise.
+3. **Biological Coherence**: the `shesha.bio` module enables native processing of single-cell perturbation data, quantifying the structural coherence of transcriptomic shifts to isolate reproducible state-space trajectories from stochastic noise.
 
 `Shesha` provides a unified API across all three domains.
 
@@ -110,15 +110,15 @@ Existing tools for representational analysis, such as `rsatoolbox` [@vandenBosch
 
 - **Ecosystem Integration**: The software relies on the standard scientific Python stack (`NumPy` [@harris2020array], `SciPy` [@2020SciPy-NMeth], `scikit-learn` [@scikit-learn]). The `shesha.bio` module works natively with `AnnData` [@Virshup2023] [@Virshup2024] objects and is compatible with `scanpy` [@Wolf2018] and `pertpy` [@Heumos2025] workflows, enabling stability analysis in existing single-cell pipelines without additional preprocessing.
 
-# Research Impact
+# Research Impact Statement
 
 `Shesha` has been used as the primary analysis framework in three lines of published research, each corresponding to a distinct module. All analyses in [@raju2026geometric], [@raju2026canary], and [@raju2026crispr] were conducted using `Shesha`, with reproducible artifacts available as six Colab tutorials (each executable in under 5 minutes).
 
-**General Representation Analysis** [@raju2026geometric]: `Shesha`'s unsupervised metrics were used to evaluate manifold consistency across varied model architectures, demonstrating that geometric stability predicts generalization independently of benchmark performance.
+**General Representation Analysis**: `Shesha`'s unsupervised metrics were used to evaluate manifold consistency across varied model architectures, demonstrating that geometric stability predicts generalization independently of benchmark performance.
 
-**LLM Alignment and Steerability** [@raju2026canary]: The LDA stability score was shown to predict steerability of fine-tuned and RLHF-trained LLMs [@Touvron2023LLaMAOA] with $\rho = 0.89$–$0.96$, providing a fast geometry-based diagnostic that complements behavioral evaluations.
+**LLM Alignment and Steerability**: The LDA stability score was previously shown [@raju2026canary] to predict steerability of fine-tuned and RLHF-trained LLMs [@Touvron2023LLaMAOA] with $\rho = 0.89$–$0.96$, providing a fast geometry-based diagnostic that complements behavioral evaluations.
 
-**Single-Cell Perturbation Analysis** [@raju2026crispr]: `shesha.bio` was used to distinguish reproducible genetic perturbation effects from stochastic transcriptomic noise in large-scale CRISPR screens, demonstrating applicability beyond ML to experimental biology.
+**Single-Cell Perturbation Analysis**: `shesha.bio` was used to distinguish reproducible genetic perturbation effects from stochastic transcriptomic noise in large-scale CRISPR screens, demonstrating applicability beyond ML to experimental biology.
 
 The package is available on PyPI (`shesha-geometry`) and archived on Zenodo [@raju2026shesha] for long-term reproducibility.
 
