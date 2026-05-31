@@ -77,7 +77,7 @@ Geometric stability is an **intrinsic property** of a representation's manifold 
 
 ## Stability vs. Similarity: A Distinction
 
-Consider two libraries holding identical collections. A content audit confirms they are equivalent—the same books are in both. Now suppose one library strictly maintains its ordering, but in the other, a reader returns a few books to the wrong shelves. In the first, the indexing system is robust: nearby books remain topically related and retrieval degrades only slightly. In the second, even these minor displacements cascade: the shelving logic is brittle and locating a book becomes unreliable. Though the inventories remain identical, the libraries are no longer functionally equivalent. For learned representations, geometric stability measures exactly this resilience. Standard similarity metrics confirm that two representations contain the same features, but fail to detect when the fine-grained relationships between them fracture under minor perturbation.
+Consider two libraries holding identical collections. A content audit confirms they are equivalent—the same books are in both. Now suppose one library strictly maintains its ordering, but in the other, readera returns books to the wrong shelves. In the first, the indexing system is robust: nearby books remain topically related and retrieval degrades only slightly. In the second, even these minor displacements cascade: the shelving logic is brittle and locating a book becomes unreliable. Though the inventories remain identical, the libraries are no longer functionally equivalent. For learned representations, geometric stability measures exactly this resilience. Standard similarity metrics confirm that two representations contain the same features, but fail to detect when the fine-grained relationships between them fracture under minor perturbation.
 
 
 ## Critical Gaps Addressed by Shesha
@@ -96,7 +96,7 @@ Consider two libraries holding identical collections. A content audit confirms t
 
 Existing tools for representational analysis, such as `rsatoolbox` [@vandenBosch2025] for RSA, `scipy` [@2020SciPy-NMeth] for Procrustes, and various CKA implementations, focus primarily on measuring alignment between two different representations. While these are vital for model comparison, they lack native support for internal self-consistency testing: the ability to measure whether a model's own geometry remains stable under controlled perturbations.
 
-`Shesha` fills this niche by providing specialized methods like `feature_split` (which partitions feature dimensions to test geometric coherence) and `anchor_stability` (which measures consistency across data subsamples). Unlike general-purpose manifold learning tools (e.g., `UMAP` [@McInnes2018], `scikit-learn` [@scikit-learn]), `Shesha` is specifically optimized for high-dimensional stability testing at scale. It also includes a dedicated `shesha.bio` module with high-level wrappers for `AnnData` objects [@Virshup2023] [@Virshup2024], making it directly compatible with the single-cell biology ecosystem used by tools like `scanpy` [@Wolf2018] and `pertpy` [@Heumos2025].
+`Shesha` fills this niche by providing specialized methods like `feature_split` (which partitions feature dimensions to test geometric coherence) and `anchor_stability` (which measures consistency across data subsamples). Unlike general-purpose manifold learning tools (e.g., `UMAP` [@McInnes2018], `scikit-learn` [@scikit-learn]), `Shesha` is specifically optimized for high-dimensional stability testing at scale. It also includes a dedicated `shesha.bio` module with high-level wrappers for `AnnData` objects [@Virshup2023; @Virshup2024], making it directly compatible with the single-cell biology ecosystem used by tools like `scanpy` [@Wolf2018] and `pertpy` [@Heumos2025].
 
 # Software Design
 
@@ -108,7 +108,7 @@ Existing tools for representational analysis, such as `rsatoolbox` [@vandenBosch
 
 - **Self-Consistency Estimator**: Split-half self-consistency was chosen over test-retest reliability because it requires only a single pass over a pre-computed embedding matrix—no repeated measurements or access to training infrastructure—making stability assessment applicable to any archived representation.
 
-- **Ecosystem Integration**: The software relies on the standard scientific Python stack (`NumPy` [@harris2020array], `SciPy` [@2020SciPy-NMeth], `scikit-learn` [@scikit-learn]). The `shesha.bio` module works natively with `AnnData` [@Virshup2023] [@Virshup2024] objects and is compatible with `scanpy` [@Wolf2018] and `pertpy` [@Heumos2025] workflows, enabling stability analysis in existing single-cell pipelines without additional preprocessing.
+- **Ecosystem Integration**: The software relies on the standard scientific Python stack (`NumPy` [@harris2020array], `SciPy` [@2020SciPy-NMeth], `scikit-learn` [@scikit-learn]). The `shesha.bio` module works natively with `AnnData` [@Virshup2023; @Virshup2024] objects and is compatible with `scanpy` [@Wolf2018] and `pertpy` [@Heumos2025] workflows, enabling stability analysis in existing single-cell pipelines without additional preprocessing.
 
 # Research Impact Statement
 
