@@ -8,7 +8,7 @@ of high-dimensional representations.
 import numpy as np
 from scipy.stats import spearmanr, pearsonr
 from scipy.spatial.distance import pdist, cdist
-from typing import Optional, Union
+from typing import List, Optional, Union
 try:
     from typing import Literal
 except ImportError:
@@ -76,14 +76,14 @@ def compute_rdm(
 # =============================================================================
 
 def feature_split(
-    X: np.ndarray,
+    X: Union[np.ndarray, List[np.ndarray]],
     n_splits: int = 30,
     metric: Literal["cosine", "correlation"] = "cosine",
     seed: Optional[int] = None,
     max_samples: Optional[int] = 1600,
     n_bootstrap_ci: Optional[int] = None,
     ci: float = 0.95,
-) -> Union[float, dict]:
+) -> Union[float, dict, List]:
     """
     Feature-Split Shesha: measures internal geometric consistency.
     
@@ -93,8 +93,10 @@ def feature_split(
     
     Parameters
     ----------
-    X : np.ndarray
-        Data matrix of shape (n_samples, n_features).
+    X : np.ndarray or list of np.ndarray
+        Data matrix of shape (n_samples, n_features), or a list of such matrices
+        for batch evaluation. When a list is passed, returns a list of results
+        in the same order.
     n_splits : int
         Number of random feature partitions to average over.
     metric : str
@@ -111,10 +113,12 @@ def feature_split(
     
     Returns
     -------
-    float or dict
-        If n_bootstrap_ci is None: mean Spearman correlation. Range: [-1, 1].
-        If n_bootstrap_ci is set: dict with keys 'mean', 'ci_low', 'ci_high',
-        'std', 'n_bootstraps', 'ci_level'.
+    float or dict or list
+        If X is a single array and n_bootstrap_ci is None: mean Spearman
+        correlation in [-1, 1].
+        If X is a single array and n_bootstrap_ci is set: dict with keys
+        'mean', 'ci_low', 'ci_high', 'std', 'n_bootstraps', 'ci_level'.
+        If X is a list: list of the above, one entry per input matrix.
     
     Examples
     --------
@@ -122,10 +126,24 @@ def feature_split(
     >>> stability = feature_split(X, n_splits=30, seed=320)
     >>> print(f"Feature-split stability: {stability:.3f}")
     
+    >>> # Batch evaluation across multiple representations
+    >>> matrices = [np.random.randn(500, 768) for _ in range(5)]
+    >>> scores = feature_split(matrices, n_splits=30, seed=320)
+    >>> print(scores)  # list of 5 floats
+    
     >>> # With bootstrap confidence interval
     >>> result = feature_split(X, n_splits=30, seed=320, n_bootstrap_ci=1000)
     >>> print(f"{result['mean']:.3f} [{result['ci_low']:.3f}, {result['ci_high']:.3f}]")
     """
+    if isinstance(X, list):
+        return [
+            feature_split(
+                x, n_splits=n_splits, metric=metric, seed=seed,
+                max_samples=max_samples, n_bootstrap_ci=n_bootstrap_ci, ci=ci,
+            )
+            for x in X
+        ]
+
     if n_bootstrap_ci is not None:
         return bootstrap_ci(
             feature_split, n_bootstrap_ci, ci, seed,
