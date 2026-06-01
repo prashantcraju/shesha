@@ -51,6 +51,29 @@ class TestFeatureSplit:
         result = shesha.feature_split(X)
         assert np.isnan(result)
 
+    def test_return_all_splits(self):
+        """Should optionally return per-split scores."""
+        X = np.random.randn(100, 64)
+        result = shesha.feature_split(X, n_splits=10, seed=320, return_all_splits=True)
+        expected = shesha.feature_split(X, n_splits=10, seed=320)
+
+        assert isinstance(result, dict)
+        assert result["mean"] == expected
+        assert len(result["split_scores"]) == 10
+        assert all(-1 <= score <= 1 for score in result["split_scores"])
+
+    def test_return_all_splits_with_bootstrap_ci_error(self):
+        """return_all_splits is not supported with bootstrap CI."""
+        X = np.random.randn(100, 64)
+        with pytest.raises(ValueError, match="return_all_splits"):
+            shesha.feature_split(
+                X,
+                n_splits=10,
+                seed=320,
+                n_bootstrap_ci=20,
+                return_all_splits=True,
+            )
+
 
 class TestSampleSplit:
     """Tests for sample_split variant."""
@@ -66,6 +89,17 @@ class TestSampleSplit:
         r1 = shesha.sample_split(X, seed=320)
         r2 = shesha.sample_split(X, seed=320)
         assert r1 == r2
+
+    def test_return_all_splits(self):
+        """Should optionally return per-split scores."""
+        X = np.random.randn(200, 64)
+        result = shesha.sample_split(X, n_splits=10, seed=320, return_all_splits=True)
+        expected = shesha.sample_split(X, n_splits=10, seed=320)
+
+        assert isinstance(result, dict)
+        assert result["mean"] == expected
+        assert len(result["split_scores"]) == 10
+        assert all(-1 <= score <= 1 for score in result["split_scores"])
 
 
 class TestAnchorStability:
