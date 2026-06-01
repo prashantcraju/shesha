@@ -83,6 +83,7 @@ def feature_split(
     max_samples: Optional[int] = 1600,
     n_bootstrap_ci: Optional[int] = None,
     ci: float = 0.95,
+    return_all_splits: bool = False,
 ) -> Union[float, dict]:
     """
     Feature-Split Shesha: measures internal geometric consistency.
@@ -108,11 +109,15 @@ def feature_split(
         the input data this many times (e.g. 1000 or 10000).
     ci : float, default=0.95
         Confidence level for the interval (only used when n_bootstrap_ci is set).
+    return_all_splits : bool, default=False
+        If True, return a dict with the mean score and per-split correlation
+        scores instead of only the mean score.
     
     Returns
     -------
     float or dict
         If n_bootstrap_ci is None: mean Spearman correlation. Range: [-1, 1].
+        If return_all_splits is True: dict with keys 'mean' and 'split_scores'.
         If n_bootstrap_ci is set: dict with keys 'mean', 'ci_low', 'ci_high',
         'std', 'n_bootstraps', 'ci_level'.
     
@@ -125,7 +130,14 @@ def feature_split(
     >>> # With bootstrap confidence interval
     >>> result = feature_split(X, n_splits=30, seed=320, n_bootstrap_ci=1000)
     >>> print(f"{result['mean']:.3f} [{result['ci_low']:.3f}, {result['ci_high']:.3f}]")
+
+    >>> # Return per-split scores for distribution plots
+    >>> result = feature_split(X, n_splits=30, seed=320, return_all_splits=True)
+    >>> scores = result["split_scores"]
     """
+    if n_bootstrap_ci is not None and return_all_splits:
+        raise ValueError("return_all_splits cannot be used with n_bootstrap_ci.")
+
     if n_bootstrap_ci is not None:
         return bootstrap_ci(
             feature_split, n_bootstrap_ci, ci, seed,
@@ -179,7 +191,14 @@ def feature_split(
         if np.isfinite(rho):
             correlations.append(rho)
     
-    return float(np.mean(correlations)) if correlations else np.nan
+    mean_score = float(np.mean(correlations)) if correlations else np.nan
+    if return_all_splits:
+        return {
+            "mean": mean_score,
+            "split_scores": [float(score) for score in correlations],
+        }
+
+    return mean_score
 
 
 def sample_split(
@@ -191,6 +210,7 @@ def sample_split(
     max_samples: Optional[int] = 1500,
     n_bootstrap_ci: Optional[int] = None,
     ci: float = 0.95,
+    return_all_splits: bool = False,
 ) -> Union[float, dict]:
     """
     Sample-Split Shesha (Bootstrap RDM): measures robustness to input variation.
@@ -218,11 +238,15 @@ def sample_split(
         the input data this many times.
     ci : float, default=0.95
         Confidence level for the interval.
+    return_all_splits : bool, default=False
+        If True, return a dict with the mean score and per-split correlation
+        scores instead of only the mean score.
     
     Returns
     -------
     float or dict
         If n_bootstrap_ci is None: mean Spearman correlation. Range: [-1, 1].
+        If return_all_splits is True: dict with keys 'mean' and 'split_scores'.
         If n_bootstrap_ci is set: dict with keys 'mean', 'ci_low', 'ci_high',
         'std', 'n_bootstraps', 'ci_level'.
     
@@ -230,7 +254,13 @@ def sample_split(
     --------
     >>> X = np.random.randn(1000, 384)
     >>> stability = sample_split(X, n_splits=50, seed=320)
+
+    >>> result = sample_split(X, n_splits=50, seed=320, return_all_splits=True)
+    >>> scores = result["split_scores"]
     """
+    if n_bootstrap_ci is not None and return_all_splits:
+        raise ValueError("return_all_splits cannot be used with n_bootstrap_ci.")
+
     if n_bootstrap_ci is not None:
         return bootstrap_ci(
             sample_split, n_bootstrap_ci, ci, seed,
@@ -273,7 +303,14 @@ def sample_split(
         if np.isfinite(rho):
             correlations.append(rho)
     
-    return float(np.mean(correlations)) if correlations else np.nan
+    mean_score = float(np.mean(correlations)) if correlations else np.nan
+    if return_all_splits:
+        return {
+            "mean": mean_score,
+            "split_scores": [float(score) for score in correlations],
+        }
+
+    return mean_score
 
 
 def anchor_stability(
