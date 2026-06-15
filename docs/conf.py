@@ -5,9 +5,9 @@ sys.path.insert(0, os.path.abspath(".."))
 
 # -- Project information -----------------------------------------------------
 project = "Shesha"
-copyright = "2026, Prashant Raju"
-author = "Prashant Raju"
-release = "0.2.20"
+copyright = "2026, Prashant C. Raju"
+author = "Prashant C. Raju"
+release = "0.2.21"
 
 # -- General configuration ---------------------------------------------------
 extensions = [

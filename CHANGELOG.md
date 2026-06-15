@@ -2,6 +2,34 @@
 
 All notable changes to the `shesha` package will be documented in this file.
 
+## [0.2.21] - 2026-06-14
+
+### Added
+
+- **`split_half_reproducibility`** (`shesha.bio`): AnnData-compatible function that measures
+  per-perturbation effect-direction reproducibility via repeated 50/50 random cell splits.
+  For each perturbation, cells are split into two independent halves, a shift vector relative
+  to the control centroid is computed for each half, and the cosine similarity between the two
+  halves is averaged over `n_splits` (default 50). Returns a `pd.DataFrame` indexed by
+  perturbation with columns `split_half_cosine` and `n_cells`.
+- **`magnitude_matched_comparison`** (`shesha.bio`): Confound-control utility that bins
+  perturbations by effect magnitude, then within each bin compares mean split-half cosine
+  between the high-stability and low-stability halves. Returns a `pd.DataFrame` with per-bin
+  statistics including `difference`, `within_bin_rho`, and `within_bin_pvalue`. Controls for
+  the SNR confound where larger-effect perturbations may appear more reproducible.
+- **`_split_half_cosine`** (`shesha.bio`): Low-level numpy implementation of the split-half
+  cosine kernel, reusable independently of AnnData.
+- `tests/test_split_half.py`: 20 pytest tests covering `_split_half_cosine`,
+  `split_half_reproducibility`, and `magnitude_matched_comparison` (signal recovery,
+  determinism, min-cells filtering, column validation, NaN handling, custom column names).
+
+### Changed
+
+- `pyproject.toml`: added `pandas>=1.3` as an explicit dependency (previously a transitive
+  dependency via `anndata`; now required directly by `shesha.bio`).
+
+---
+
 ## [0.2.20] - 2026-05-28
 
 ### Added
