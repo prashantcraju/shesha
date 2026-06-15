@@ -6,6 +6,7 @@ measuring the consistency of perturbation effects across individual cells.
 """
 
 import numpy as np
+import pandas as pd
 from typing import Optional, Union
 try:
     from typing import Literal
@@ -27,7 +28,9 @@ __all__ = [
     "compute_stability",
     "compute_stability_whitened",
     "compute_stability_knn",
-    "compute_magnitude"
+    "compute_magnitude",
+    "split_half_reproducibility",
+    "magnitude_matched_comparison",
 ]
 
 EPS = 1e-12
@@ -705,3 +708,245 @@ def perturbation_stability_knn(
         seed=seed,
         max_samples=max_samples
     )
+
+
+# =============================================================================
+# Split-Half Reproducibility
+# =============================================================================
+
+def _split_half_cosine(
+    X_pert: np.ndarray,
+    ctrl_centroid: np.ndarray,
+    n_splits: int = 50,
+    seed: int = 0,
+    min_cells: int = 30,
+) -> float:
+    """
+    Split perturbation cells 50/50 repeatedly and return mean cosine similarity
+    between the two half-shift vectors (relative to the control centroid).
+
+    Parameters
+    ----------
+    X_pert : np.ndarray
+        Perturbed cell embeddings, shape (n_cells, n_features).
+    ctrl_centroid : np.ndarray
+        Control centroid, shape (n_features,).
+    n_splits : int
+        Number of random splits.
+    seed : int
+        Random seed for reproducibility.
+    min_cells : int
+        Minimum cells required (need >= min_cells/2 per half).
+
+    Returns
+    -------
+    float
+        Mean cosine similarity across splits, or NaN if too few cells.
+    """
+    n_cells = X_pert.shape[0]
+    if n_cells < min_cells:
+        return np.nan
+
+    rng = np.random.default_rng(seed=seed)
+    cosines = np.empty(n_splits)
+
+    for i in range(n_splits):
+        perm = rng.permutation(n_cells)
+        half = n_cells // 2
+        idx_a, idx_b = perm[:half], perm[half:2 * half]
+
+        shift_a = (X_pert[idx_a] - ctrl_centroid).mean(axis=0)
+        shift_b = (X_pert[idx_b] - ctrl_centroid).mean(axis=0)
+
+        norm_a = np.linalg.norm(shift_a)
+        norm_b = np.linalg.norm(shift_b)
+
+        if norm_a < EPS or norm_b < EPS:
+            cosines[i] = 0.0
+        else:
+            cosines[i] = np.dot(shift_a, shift_b) / (norm_a * norm_b)
+
+    return float(np.mean(cosines))
+
+
+def split_half_reproducibility(
+    adata: "AnnData",
+    perturbation_key: str = "perturbation",
+    control_label: str = "control",
+    n_splits: int = 50,
+    random_state: int = 320,
+    min_cells: int = 30,
+    layer: Optional[str] = None,
+) -> "pd.DataFrame":
+    """
+    Split-half reproducibility for each perturbation in an AnnData object.
+
+    For each perturbation with enough cells, randomly splits cells 50/50,
+    computes independent shift vectors relative to the control centroid,
+    and measures cosine similarity between the halves. This is a direct
+    measure of effect-direction reproducibility: perturbations whose
+    individual cells shift coherently will have high split-half cosine.
+
+    Parameters
+    ----------
+    adata : AnnData
+        Annotated data matrix (cells x features). Operates on adata.X or
+        the specified layer.
+    perturbation_key : str, default="perturbation"
+        Column in adata.obs containing perturbation labels.
+    control_label : str, default="control"
+        Label identifying control/unperturbed cells.
+    n_splits : int, default=50
+        Number of random 50/50 splits per perturbation.
+    random_state : int, default=320
+        Base random seed. Each perturbation gets a unique derived seed.
+    min_cells : int, default=30
+        Minimum cells required for a perturbation to be included.
+    layer : str, optional
+        Layer in adata.layers to use. If None, uses adata.X.
+
+    Returns
+    -------
+    pd.DataFrame
+        Columns: perturbation, split_half_cosine, n_cells.
+        Indexed by perturbation name.
+
+    Examples
+    --------
+    >>> from shesha.bio import split_half_reproducibility
+    >>> repro = split_half_reproducibility(
+    ...     adata,
+    ...     perturbation_key="perturbation",
+    ...     control_label="control",
+    ...     n_splits=50,
+    ...     random_state=320,
+    ... )
+    """
+    if AnnData is None or not isinstance(adata, AnnData):
+        raise ImportError("anndata is required for this function.")
+
+    labels = adata.obs[perturbation_key].astype(str).values
+    ctrl_mask = labels == control_label
+    X_ctrl = _get_array(adata, ctrl_mask, layer)
+    ctrl_centroid = X_ctrl.mean(axis=0)
+
+    perturbations = [p for p in np.unique(labels) if p != control_label]
+
+    rows = []
+    for pert in perturbations:
+        pert_mask = labels == pert
+        n_cells = int(pert_mask.sum())
+        if n_cells < min_cells:
+            continue
+
+        X_pert = _get_array(adata, pert_mask, layer)
+        pert_seed = random_state + hash(pert) % 100_000
+
+        cosine = _split_half_cosine(
+            X_pert, ctrl_centroid,
+            n_splits=n_splits,
+            seed=pert_seed,
+            min_cells=min_cells,
+        )
+        rows.append({
+            "perturbation": pert,
+            "split_half_cosine": cosine,
+            "n_cells": n_cells,
+        })
+
+    df = pd.DataFrame(rows)
+    if len(df) > 0:
+        df = df.set_index("perturbation")
+    return df
+
+
+def magnitude_matched_comparison(
+    repro_df: "pd.DataFrame",
+    stability_col: str = "Sp",
+    repro_col: str = "split_half_cosine",
+    magnitude_col: str = "Mp",
+    n_bins: int = 4,
+) -> "pd.DataFrame":
+    """
+    Magnitude-matched comparison of high-stability vs low-stability groups.
+
+    Bins perturbations by magnitude, then within each bin splits at the
+    stability median to compare reproducibility between the high- and
+    low-stability halves. This controls for the confound that larger-effect
+    perturbations may appear more reproducible simply due to higher SNR.
+
+    Parameters
+    ----------
+    repro_df : pd.DataFrame
+        DataFrame containing at least the columns specified by stability_col,
+        repro_col, and magnitude_col.
+    stability_col : str, default="Sp"
+        Column with stability scores.
+    repro_col : str, default="split_half_cosine"
+        Column with reproducibility scores (e.g. split-half cosine).
+    magnitude_col : str, default="Mp"
+        Column with magnitude/effect-size scores for binning.
+    n_bins : int, default=4
+        Number of magnitude bins (quartiles by default).
+
+    Returns
+    -------
+    pd.DataFrame
+        One row per magnitude bin with columns:
+        mag_bin, n, mag_min, mag_max, high_stability_mean, low_stability_mean,
+        difference, within_bin_rho, within_bin_pvalue.
+
+    Examples
+    --------
+    >>> from shesha.bio import magnitude_matched_comparison
+    >>> bins = magnitude_matched_comparison(
+    ...     repro_df,
+    ...     stability_col="Sp",
+    ...     repro_col="split_half_cosine",
+    ...     magnitude_col="Mp",
+    ...     n_bins=4,
+    ... )
+    """
+    from scipy.stats import spearmanr
+
+    df = repro_df.dropna(subset=[stability_col, repro_col, magnitude_col]).copy()
+
+    if len(df) < n_bins * 4:
+        raise ValueError(
+            f"Too few perturbations ({len(df)}) for {n_bins} bins. "
+            f"Need at least {n_bins * 4}."
+        )
+
+    bin_labels = [f"Q{i+1}" for i in range(n_bins)]
+    df["_mag_bin"] = pd.qcut(
+        df[magnitude_col], q=n_bins, labels=bin_labels, duplicates="drop"
+    )
+
+    results = []
+    for q in bin_labels:
+        subset = df[df["_mag_bin"] == q]
+        if len(subset) < 6:
+            continue
+
+        sp_median = subset[stability_col].median()
+        high = subset[subset[stability_col] >= sp_median]
+        low = subset[subset[stability_col] < sp_median]
+
+        mean_high = high[repro_col].mean()
+        mean_low = low[repro_col].mean()
+
+        rho, pval = spearmanr(subset[stability_col], subset[repro_col])
+
+        results.append({
+            "mag_bin": q,
+            "n": len(subset),
+            "mag_min": float(subset[magnitude_col].min()),
+            "mag_max": float(subset[magnitude_col].max()),
+            "high_stability_mean": float(mean_high),
+            "low_stability_mean": float(mean_low),
+            "difference": float(mean_high - mean_low),
+            "within_bin_rho": float(rho),
+            "within_bin_pvalue": float(pval),
+        })
+
+    return pd.DataFrame(results)
