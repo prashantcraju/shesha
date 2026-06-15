@@ -47,6 +47,7 @@ Explore `shesha` with these interactive notebooks (each takes < 5 minutes to run
 * [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/prashantcraju/shesha/blob/main/tutorials/drift_tutorial.ipynb) **Representational Drift** - Measure drift from Gaussian noise injection and LoRA fine-tuning.
 * [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/prashantcraju/shesha/blob/main/tutorials/training_drift_tutorial.ipynb) **Training Dynamics** - Track geometric stability during training to detect representation collapse.
 * [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/prashantcraju/shesha/blob/main/tutorials/crispr_tutorial.ipynb) **CRISPR (Bio)** - Use `shesha.bio` to analyze stability in single-cell CRISPR perturbation experiments.
+* [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/prashantcraju/shesha/blob/main/tutorials/crispr_split_half_tutorial.ipynb) **CRISPR Split-Half Reproducibility (Bio)** - Measure effect-direction reproducibility with `split_half_reproducibility` and control for magnitude confounds with `magnitude_matched_comparison`.
 
 ## Citation
 
