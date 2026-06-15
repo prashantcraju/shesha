@@ -2,6 +2,18 @@
 
 All notable changes to the `shesha` package will be documented in this file.
 
+## [0.2.22] - 2026-06-15
+
+### Added
+
+- **`tutorials/crispr_split_half_tutorial.ipynb`**: End-to-end Colab tutorial for split-half
+  reproducibility on the Norman 2019 CRISPRa dataset. Covers preprocessing, computing
+  `split_half_reproducibility`, computing `magnitude_matched_comparison`, Spearman
+  correlation analysis, and a 3-panel figure (Sp vs reproducibility, Mp vs reproducibility,
+  magnitude-matched bar chart). Includes interpretation guide and quick-reference table.
+
+---
+
 ## [0.2.21] - 2026-06-14
 
 ### Added
