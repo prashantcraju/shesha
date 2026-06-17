@@ -105,3 +105,47 @@ between the high-stability and low-stability halves.
        n_bins=4,
    )
    print(bins[["mag_bin", "n", "high_stability_mean", "low_stability_mean", "difference"]])
+
+Discordance
+-----------
+
+:func:`shesha.bio.discordance` identifies perturbations that deviate from the expected
+stability-magnitude relationship. High discordance scores flag perturbations that are
+less stable than expected given their effect size — candidates for pleiotropic or
+heterogeneous effects.
+
+Three methods are available:
+
+- **linear** (default): OLS residual, sign-flipped and z-scored. Fast and interpretable.
+- **rank**: rank(Mp) - rank(Sp), z-scored. Non-parametric; robust to outliers.
+- **loess**: Local regression (LOWESS) residual, sign-flipped and z-scored.
+  Captures nonlinear magnitude-stability trends where the relationship curves at low
+  magnitudes. Requires ``statsmodels``.
+
+.. code-block:: python
+
+   from shesha.bio import discordance
+
+   # Linear (default)
+   df["disc_linear"] = discordance(df, stability_col="Sp", magnitude_col="Mp")
+
+   # LOESS — captures nonlinear curvature
+   df["disc_loess"] = discordance(
+       df,
+       stability_col="Sp",
+       magnitude_col="Mp",
+       method="loess",
+       loess_frac=0.3,
+   )
+
+   # Top 10 most discordant perturbations
+   print(df.nlargest(10, "disc_loess")[["Sp", "Mp", "disc_loess"]])
+
+The ``loess_frac`` parameter controls smoothness: smaller values (e.g. 0.2) follow the
+data more closely, while larger values (e.g. 0.5) produce smoother expected curves.
+The default of 0.3 balances sensitivity and stability for typical CRISPR screen sizes.
+
+.. note::
+
+   ``method='loess'`` requires `statsmodels <https://www.statsmodels.org>`_.
+   Install with ``pip install statsmodels``.

@@ -2,6 +2,23 @@
 
 All notable changes to the `shesha` package will be documented in this file.
 
+## [0.2.23] - 2026-06-17
+
+### Added
+
+- **`discordance`** (`shesha.bio`): Identifies perturbations that deviate from the expected
+  stability-magnitude relationship. Supports three methods:
+  - `"linear"` (default): OLS residual, sign-flipped and z-scored.
+  - `"rank"`: rank(Mp) - rank(Sp), z-scored. Non-parametric and robust to outliers.
+  - `"loess"`: LOWESS local regression residual, sign-flipped and z-scored. Captures
+    nonlinear magnitude-stability trends. Requires `statsmodels` (optional dependency).
+- **Optional dependency `loess`**: `pip install shesha-geometry[loess]` installs `statsmodels`
+  for LOESS-based discordance.
+- Tests for all three discordance methods in `tests/test_split_half.py`.
+- Documentation for `discordance` in `docs/guide/bio.rst`.
+
+---
+
 ## [0.2.22] - 2026-06-15
 
 ### Added

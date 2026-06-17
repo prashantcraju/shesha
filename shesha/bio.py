@@ -31,6 +31,7 @@ __all__ = [
     "compute_magnitude",
     "split_half_reproducibility",
     "magnitude_matched_comparison",
+    "discordance",
 ]
 
 EPS = 1e-12
@@ -950,3 +951,106 @@ def magnitude_matched_comparison(
         })
 
     return pd.DataFrame(results)
+
+
+# =============================================================================
+# Discordance
+# =============================================================================
+
+def discordance(
+    df: "pd.DataFrame",
+    stability_col: str = "Sp",
+    magnitude_col: str = "Mp",
+    method: Literal["linear", "rank", "loess"] = "linear",
+    loess_frac: float = 0.3,
+) -> "pd.Series":
+    """
+    Compute discordance scores: how much a perturbation deviates from the
+    expected stability-magnitude relationship.
+
+    High discordance (positive values) identifies perturbations that are
+    less stable than expected given their effect size — candidates for
+    pleiotropic or heterogeneous effects.
+
+    Parameters
+    ----------
+    df : pd.DataFrame
+        DataFrame containing at least the columns specified by stability_col
+        and magnitude_col.
+    stability_col : str, default="Sp"
+        Column with stability scores.
+    magnitude_col : str, default="Mp"
+        Column with magnitude/effect-size scores.
+    method : {'linear', 'rank', 'loess'}, default='linear'
+        How to model the expected stability-magnitude relationship:
+        - 'linear': OLS residual, sign-flipped, z-scored.
+        - 'rank': rank(Mp) - rank(Sp), z-scored.
+        - 'loess': LOESS residual (local regression), sign-flipped, z-scored.
+          Captures nonlinear magnitude-stability trends.
+    loess_frac : float, default=0.3
+        Fraction of data used for each local regression window (only used
+        when method='loess'). Smaller values follow the data more closely;
+        larger values produce smoother fits.
+
+    Returns
+    -------
+    pd.Series
+        Z-scored discordance scores indexed like the input DataFrame.
+        Positive = less stable than expected (discordant).
+        Negative = more stable than expected (concordant).
+
+    Examples
+    --------
+    >>> from shesha.bio import discordance
+    >>> df["disc_linear"] = discordance(df, stability_col="Sp", magnitude_col="Mp")
+    >>> df["disc_loess"] = discordance(df, method="loess", loess_frac=0.3)
+    >>> # Top discordant perturbations
+    >>> df.nlargest(10, "disc_loess")
+    """
+    from scipy.stats import rankdata
+
+    sub = df[[stability_col, magnitude_col]].dropna()
+    mag = sub[magnitude_col].values.astype(np.float64)
+    stab = sub[stability_col].values.astype(np.float64)
+
+    if len(sub) < 10:
+        raise ValueError(
+            f"Too few valid observations ({len(sub)}). Need at least 10."
+        )
+
+    if method == "linear":
+        X = np.column_stack([np.ones_like(mag), mag])
+        beta = np.linalg.lstsq(X, stab, rcond=None)[0]
+        fitted = X @ beta
+        resid = stab - fitted
+        d = -resid
+
+    elif method == "rank":
+        rank_m = rankdata(mag)
+        rank_s = rankdata(stab)
+        d = rank_m - rank_s
+
+    elif method == "loess":
+        try:
+            from statsmodels.nonparametric.smoothers_lowess import lowess
+        except ImportError:
+            raise ImportError(
+                "method='loess' requires statsmodels. "
+                "Install with: pip install statsmodels"
+            )
+        fitted = lowess(stab, mag, frac=loess_frac, return_sorted=False)
+        resid = stab - fitted
+        d = -resid
+
+    else:
+        raise ValueError(
+            f"Unknown method: {method!r}. Use 'linear', 'rank', or 'loess'."
+        )
+
+    std = d.std()
+    if std < EPS:
+        z = np.zeros_like(d)
+    else:
+        z = (d - d.mean()) / std
+
+    return pd.Series(z, index=sub.index, name="discordance")

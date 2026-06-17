@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "shesha-geometry"
-version = "0.2.22"
+version = "0.2.23"
 description = "Self-consistency metrics for representational stability analysis"
 readme = "README_PYPI.md"
 license = {text = "MIT"}
@@ -66,12 +66,16 @@ dependencies = [
 bio = [
     "scikit-learn>=1.0",
 ]
+loess = [
+    "statsmodels>=0.13",
+]
 dev = [
     "pytest>=7.0",
     "pytest-cov",
     "black",
     "ruff",
     "scikit-learn>=1.0",
+    "statsmodels>=0.13",
     "packaging",
 ]
 

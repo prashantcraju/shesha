@@ -1,4 +1,4 @@
-"""Tests for split-half reproducibility and magnitude-matched comparison."""
+"""Tests for split-half reproducibility, magnitude-matched comparison, and discordance."""
 
 import numpy as np
 import pandas as pd
@@ -8,7 +8,16 @@ from shesha.bio import (
     _split_half_cosine,
     split_half_reproducibility,
     magnitude_matched_comparison,
+    discordance,
 )
+
+
+def _has_statsmodels():
+    try:
+        import statsmodels  # noqa: F401
+        return True
+    except ImportError:
+        return False
 
 
 # ---------------------------------------------------------------------------
@@ -235,3 +244,120 @@ class TestMagnitudeMatchedComparison:
         df.loc[0:5, "Sp"] = np.nan
         result = magnitude_matched_comparison(df)
         assert len(result) > 0
+
+
+# ---------------------------------------------------------------------------
+# discordance
+# ---------------------------------------------------------------------------
+
+class TestDiscordance:
+    @pytest.fixture
+    def base_df(self):
+        rng = np.random.default_rng(42)
+        n = 200
+        mp = np.abs(rng.standard_normal(n)) + 0.5
+        sp = 0.7 * mp + rng.standard_normal(n) * 0.3
+        return pd.DataFrame({"Sp": sp, "Mp": mp})
+
+    def test_returns_series(self, base_df):
+        result = discordance(base_df)
+        assert isinstance(result, pd.Series)
+        assert result.name == "discordance"
+
+    def test_output_length_matches_valid(self, base_df):
+        result = discordance(base_df)
+        assert len(result) == len(base_df)
+
+    def test_z_scored(self, base_df):
+        result = discordance(base_df)
+        assert abs(result.mean()) < 1e-8
+        assert abs(result.std(ddof=0) - 1.0) < 1e-8
+
+    def test_linear_method(self, base_df):
+        result = discordance(base_df, method="linear")
+        assert len(result) == len(base_df)
+        assert abs(result.mean()) < 1e-10
+
+    def test_rank_method(self, base_df):
+        result = discordance(base_df, method="rank")
+        assert len(result) == len(base_df)
+        assert abs(result.mean()) < 1e-10
+
+    @pytest.mark.skipif(
+        not _has_statsmodels(), reason="statsmodels not installed"
+    )
+    def test_loess_method(self, base_df):
+        result = discordance(base_df, method="loess", loess_frac=0.3)
+        assert len(result) == len(base_df)
+        assert abs(result.mean()) < 1e-8
+
+    @pytest.mark.skipif(
+        not _has_statsmodels(), reason="statsmodels not installed"
+    )
+    def test_loess_frac_parameter(self, base_df):
+        r1 = discordance(base_df, method="loess", loess_frac=0.2)
+        r2 = discordance(base_df, method="loess", loess_frac=0.6)
+        assert not r1.equals(r2)
+
+    def test_methods_correlated_linear_rank(self, base_df):
+        from scipy.stats import spearmanr
+        d_lin = discordance(base_df, method="linear")
+        d_rank = discordance(base_df, method="rank")
+        rho_lr, _ = spearmanr(d_lin, d_rank)
+        assert rho_lr > 0.7
+
+    @pytest.mark.skipif(
+        not _has_statsmodels(), reason="statsmodels not installed"
+    )
+    def test_methods_correlated_linear_loess(self, base_df):
+        from scipy.stats import spearmanr
+        d_lin = discordance(base_df, method="linear")
+        d_loess = discordance(base_df, method="loess")
+        rho_ll, _ = spearmanr(d_lin, d_loess)
+        assert rho_ll > 0.7
+
+    def test_invalid_method_raises(self, base_df):
+        with pytest.raises(ValueError, match="Unknown method"):
+            discordance(base_df, method="quadratic")
+
+    def test_too_few_rows_raises(self):
+        df = pd.DataFrame({"Sp": [1, 2, 3], "Mp": [1, 2, 3]})
+        with pytest.raises(ValueError, match="Too few"):
+            discordance(df)
+
+    def test_custom_columns(self):
+        rng = np.random.default_rng(99)
+        n = 50
+        df = pd.DataFrame({
+            "stability": rng.standard_normal(n),
+            "magnitude": np.abs(rng.standard_normal(n)) + 0.1,
+        })
+        result = discordance(df, stability_col="stability", magnitude_col="magnitude")
+        assert len(result) == n
+
+    def test_nan_handling(self):
+        rng = np.random.default_rng(55)
+        n = 100
+        df = pd.DataFrame({
+            "Sp": rng.standard_normal(n),
+            "Mp": np.abs(rng.standard_normal(n)) + 0.1,
+        })
+        df.loc[0:5, "Sp"] = np.nan
+        result = discordance(df)
+        assert len(result) == n - 6  # NaN rows excluded
+
+    def test_index_preserved(self, base_df):
+        base_df.index = [f"gene_{i}" for i in range(len(base_df))]
+        result = discordance(base_df)
+        assert list(result.index) == list(base_df.index)
+
+    def test_high_discordance_for_outlier(self):
+        rng = np.random.default_rng(10)
+        n = 100
+        mp = np.abs(rng.standard_normal(n)) + 1.0
+        sp = 0.8 * mp + rng.standard_normal(n) * 0.1
+        sp[0] = 0.0  # high magnitude but very low stability -> discordant
+        mp[0] = 5.0
+        df = pd.DataFrame({"Sp": sp, "Mp": mp})
+        result = discordance(df, method="linear")
+        assert result.iloc[0] > 2.0  # should be a strong outlier
