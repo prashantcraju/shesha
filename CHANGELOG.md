@@ -2,6 +2,20 @@
 
 All notable changes to the `shesha` package will be documented in this file.
 
+## [0.2.25] - 2026-06-18
+
+### Changed
+
+- **Drop Python 3.8 support**: removed from CI matrix and `requires-python` (EOL Oct 2024;
+  `anndata` no longer supports it). Minimum supported Python is now **3.9**.
+- **`pyproject.toml` license field**: migrated from deprecated TOML table format
+  (`license = {text = "MIT"}`) to SPDX string (`license = "MIT"`); removed redundant
+  `License :: OSI Approved :: MIT License` classifier.
+- **CI**: updated `codecov/codecov-action` v4 → v5 (Node.js 24 compatibility); updated
+  `black` target-version to py39–py312.
+
+---
+
 ## [0.2.24] - 2026-06-18
 
 ### Changed

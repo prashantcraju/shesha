@@ -6,7 +6,7 @@ authors:
   - family-names: "Raju"
     given-names: "Prashant C."
     orcid: "https://orcid.org/0000-0003-3778-4788"
-version: 0.2.24
+version: 0.2.25
 doi: 10.5281/zenodo.18227453
 date-released: 2026-06-17
 url: "https://github.com/prashantcraju/shesha"
