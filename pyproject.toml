@@ -7,7 +7,7 @@ name = "shesha-geometry"
 version = "0.2.24"
 description = "Self-consistency metrics for representational stability analysis"
 readme = "README_PYPI.md"
-license = {text = "MIT"}
+license = "MIT"
 authors = [
     {name = "Prashant Raju", email = "rajuprashant@gmail.com"}
 ]
@@ -42,7 +42,6 @@ keywords = [
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Science/Research",
-    "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.8",
     "Programming Language :: Python :: 3.9",
