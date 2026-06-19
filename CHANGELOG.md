@@ -2,6 +2,29 @@
 
 All notable changes to the `shesha` package will be documented in this file.
 
+## [0.2.24] - 2026-06-18
+
+### Changed
+
+- **`anndata` is now an optional dependency**: moved from required `dependencies` to the
+  `[bio]` optional extra. Install with `pip install shesha-geometry[bio]` for `shesha.bio`
+  workflows. The core package (`shesha.core`, `shesha.sim`) remains lightweight with only
+  `numpy`, `scipy`, and `pandas` as required dependencies. `anndata` is also included in
+  `[dev]` to ensure the full test suite runs in CI.
+- **`CONTRIBUTING.md`**: updated linting instructions from `flake8` to `ruff`, matching the
+  actual tooling configured in `pyproject.toml`.
+- **`README.md` / `README_PYPI.md`**: added `pip install shesha-geometry[bio]` install
+  instructions to the Installation section.
+
+### Added
+
+- **GitHub issue templates** (`.github/ISSUE_TEMPLATE/`): bug report and feature request
+  templates for structured community contributions.
+- **GitHub PR template** (`.github/pull_request_template.md`): standardized pull request
+  checklist covering tests, formatting, and linting.
+
+---
+
 ## [0.2.23] - 2026-06-17
 
 ### Added

@@ -66,7 +66,7 @@ git push origin main
 We follow standard Python PEP 8 conventions. To maintain a consistent codebase, please format your code before committing.
 
 * Use `black` for code formatting.
-* Use `flake8` for linting.
+* Use `ruff` for linting.
 * Ensure all new functions and classes have descriptive docstrings detailing expected input shapes and types (especially critical for high-dimensional arrays and `AnnData` objects).
 
 ### Running Tests

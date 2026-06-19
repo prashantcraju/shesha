@@ -23,6 +23,12 @@ Shesha measures the geometric stability of high-dimensional representations by q
 pip install shesha-geometry
 ```
 
+For single-cell biology workflows (`shesha.bio`), install with the `bio` extra, which adds `anndata` and `scikit-learn`:
+
+```bash
+pip install shesha-geometry[bio]
+```
+
 ## Quick Start
 
 ```python
@@ -73,11 +79,11 @@ If you use `shesha-geometry`, please cite:
 
 If you use the supervised variants (`supervised_alignment`, `lda_stability`, `variance_ratio`, `class_separation_ratio`), please also cite:
 ```bibtex
-@article{raju2026canary,
+@inproceedings{raju2026canary
   title = {The Geometric Canary: Predicting Steerability and Detecting Drift via Representational Stability},
   author = {Raju, Prashant C.},
-  journal = {arXiv preprint arXiv:2604.17698},
-  year = {2026}
+  booktitle= {Mechanistic Interpretability Workshop at ICML 2026},
+  year= {2026}
 }
 ```
 

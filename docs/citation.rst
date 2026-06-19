@@ -26,12 +26,12 @@ If you use the supervised variants (``supervised_alignment``, ``lda_stability``,
 
 .. code-block:: bibtex
 
-   @article{raju2026canary,
+   @inproceedings{raju2026canary
      title = {The Geometric Canary: Predicting Steerability and Detecting Drift via Representational Stability},
      author = {Raju, Prashant C.},
-     journal = {arXiv preprint arXiv:2604.17698},
+     booktitle = {Mechanistic Interpretability Workshop at ICML 2026},
      year = {2026}
-   }
+  } 
 
 If you use the ``shesha.bio`` module, please also cite:
 
