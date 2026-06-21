@@ -2,6 +2,16 @@
 
 All notable changes to the `shesha` package will be documented in this file.
 
+## [0.2.26] - 2026-06-21
+
+### Changed
+
+- **CRISPR tutorials**: install instructions now use `pip install "shesha-geometry[bio]"`
+  so `anndata` and `scikit-learn` are pulled in via the `[bio]` extra (required by
+  `shesha.bio`).
+
+---
+
 ## [0.2.25] - 2026-06-18
 
 ### Changed
