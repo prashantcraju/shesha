@@ -26,7 +26,7 @@ If you use the supervised variants (``supervised_alignment``, ``lda_stability``,
 
 .. code-block:: bibtex
 
-   @inproceedings{raju2026canary
+   @inproceedings{raju2026canary,
      title = {The Geometric Canary: Predicting Steerability and Detecting Drift via Representational Stability},
      author = {Raju, Prashant C.},
      booktitle = {Mechanistic Interpretability Workshop at ICML 2026},
