@@ -83,7 +83,7 @@ If you use the supervised variants (`supervised_alignment`, `lda_stability`, `va
 @inproceedings{raju2026canary,
   title = {The Geometric Canary: Predicting Steerability and Detecting Drift via Representational Stability},
   author = {Raju, Prashant C.},
-  booktitle= {ICML Mechanistic Interpretability Workshop},
+  booktitle = {ICML Mechanistic Interpretability Workshop},
   year= {2026}
 }
 ```
@@ -91,7 +91,7 @@ If you use the supervised variants (`supervised_alignment`, `lda_stability`, `va
 If you use the `shesha.bio` module, please also cite:
 ```bibtex
 @article{raju2026crispr,
-  title = {Geometric Coherence of Single-Cell CRISPR Perturbations Reveals Regulatory Architecture and Predicts Cellular Stress},
+  title = {Geometric coherence of single-cell {CRISPR} perturbations reveals regulatory architecture and predicts cellular stress},
   author = {Raju, Prashant C.},
   journal = {arXiv preprint arXiv:2604.16642},
   year = {2026}
