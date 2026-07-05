@@ -39,7 +39,9 @@ where $\text{vec}(\cdot)$ extracts the upper triangular elements. The choice of 
 
 ## Unsupervised Variants (Foundations Paper)
 
-$\text{Shesha}_{\text{FS}}$ (`feature_split`) assesses internal geometric consistency by partitioning feature dimensions into random disjoint halves (\autoref{fig:overview}A):
+![**A**: Core geometric stability computation for $\text{Shesha}_{\text{FS}}$: the representation matrix $\mathbf{X}$ is split into complementary feature subsets, RDMs are computed on each, and their Spearman rank correlation yields the stability score. **B**: Modular software architecture of `shesha-geometry`, showing the dependency structure across `shesha.core`, `shesha.bio`, and the scverse ecosystem.](overview.png){#fig:overview width=100%}
+
+$\text{Shesha}_{\text{FS}}$ (`feature_split`) assesses internal geometric consistency by partitioning feature dimensions into random disjoint halves (Panel~A, \autoref{fig:overview}):
 
 $$\text{Shesha}_{\text{FS}}(\mathbf{X}) = \frac{1}{K} \sum_{k=1}^{K} \rho_s\bigl(\text{vec}(\mathbf{D}_{\mathcal{F}_k^{(1)}}), \text{vec}(\mathbf{D}_{\mathcal{F}_k^{(2)}})\bigr)$$
 
@@ -69,7 +71,6 @@ where $\bar{\mathbf{d}}$ is the mean shift direction from control to perturbed p
 
 All variants use Spearman correlation by default (robust to monotonic transformations and outliers) and subsample to $n_{\max}=1600$ when computational constraints require.
 
-![**A**: Core geometric stability computation for $\text{Shesha}_{\text{FS}}$: the representation matrix $\mathbf{X}$ is split into complementary feature subsets, RDMs are computed on each, and their Spearman rank correlation yields the stability score. **B**: Modular software architecture of `shesha-geometry`, showing the dependency structure across `shesha.core`, `shesha.bio`, and the scverse ecosystem.\label{fig:overview}](overview.png){ width=100% }
 # Statement of Need
 
 Geometric stability is an **intrinsic property** of a representation's manifold that measures how consistently it preserves internal geometric structure across varied feature subsets or under perturbation. Unlike similarity metrics such as CKA [@kornblith2019similarity] and RSA [@Kriegeskorte2008], which are **extrinsic properties** measuring how one representation aligns with another—stability is reference-independent. It asks whether the internal "geometry" of the representational space is robust or brittle. Shesha provides a unified API for geometric stability analysis, with applications spanning representation learning [@raju2026geometric], model steerability and drift detection [@raju2026canary], and single-cell perturbation biology [@raju2026crispr].
