@@ -15,7 +15,7 @@ authors:
 affiliations:
   - name: Independent Researcher
     index: 1
-date: 31 December 2026
+date: 12 July 2026
 bibliography: paper.bib
 ---
 
@@ -37,11 +37,11 @@ $$\text{Shesha}(\mathbf{X}) = \rho_s\bigl(\text{vec}(\mathbf{D}^{(1)}), \text{ve
 
 where $\text{vec}(\cdot)$ extracts the upper triangular elements. The choice of how views are constructed defines three families of variants, each grounded in a distinct paper.
 
-## Unsupervised Variants (Foundations Paper)
-
 ![**A**: Core geometric stability computation for $\text{Shesha}_{\text{FS}}$: the representation matrix $\mathbf{X}$ is split into complementary feature subsets, RDMs are computed on each, and their Spearman rank correlation yields the stability score. **B**: Modular software architecture of `shesha-geometry`, showing the dependency structure across `shesha.core`, `shesha.bio`, and the scverse ecosystem.](overview.png){#fig:overview width=100%}
 
-$\text{Shesha}_{\text{FS}}$ (`feature_split`) assesses internal geometric consistency by partitioning feature dimensions into random disjoint halves (Panel~A, \autoref{fig:overview}):
+## Unsupervised Variants (Foundations Paper)
+
+$\text{Shesha}_{\text{FS}}$ (`feature_split`) assesses internal geometric consistency by partitioning feature dimensions into random disjoint halves (Panel A, \autoref{fig:overview}):
 
 $$\text{Shesha}_{\text{FS}}(\mathbf{X}) = \frac{1}{K} \sum_{k=1}^{K} \rho_s\bigl(\text{vec}(\mathbf{D}_{\mathcal{F}_k^{(1)}}), \text{vec}(\mathbf{D}_{\mathcal{F}_k^{(2)}})\bigr)$$
 
@@ -133,6 +133,10 @@ In accordance with JOSS AI policy, the author discloses the use of generative AI
 - **Visual Assets**: The software logo was generated using Nano Banana Pro.
 
 **Confirmation of Review**: The author has reviewed, edited, and validated all AI-assisted outputs to ensure technical accuracy and adherence to the core geometric principles of the Shesha framework. All core design decisions, architectural choices, and research insights are attributable to the human author, who maintains full responsibility for the code's integrity and the manuscript's content.
+
+# Acknowledgements
+
+The author thanks the scverse community for developing the `AnnData` ecosystem that `shesha.bio` builds upon. No external funding supported this work.
 
 # References
 
