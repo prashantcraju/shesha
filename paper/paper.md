@@ -13,7 +13,7 @@ authors:
     orcid: 0000-0003-3778-4788
     affiliation: "1"
 affiliations:
-  - name: Independent Researcher
+  - name: Independent Researcher, United States
     index: 1
 date: 12 July 2026
 bibliography: paper.bib
@@ -41,7 +41,7 @@ where $\text{vec}(\cdot)$ extracts the upper triangular elements. The choice of 
 
 ## Unsupervised Variants (Foundations Paper)
 
-$\text{Shesha}_{\text{FS}}$ (`feature_split`) assesses internal geometric consistency by partitioning feature dimensions into random disjoint halves (Panel A, \autoref{fig:overview}):
+$\text{Shesha}_{\text{FS}}$ (`feature_split`) assesses internal geometric consistency by partitioning feature dimensions into random disjoint halves (\autoref{fig:overview}A):
 
 $$\text{Shesha}_{\text{FS}}(\mathbf{X}) = \frac{1}{K} \sum_{k=1}^{K} \rho_s\bigl(\text{vec}(\mathbf{D}_{\mathcal{F}_k^{(1)}}), \text{vec}(\mathbf{D}_{\mathcal{F}_k^{(2)}})\bigr)$$
 
