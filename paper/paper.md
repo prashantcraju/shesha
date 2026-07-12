@@ -112,7 +112,7 @@ Existing tools for representational analysis, such as `rsatoolbox` [@vandenBosch
 
 # Research Impact Statement
 
-`Shesha` has been used as the primary analysis framework in three lines of published research, each corresponding to a distinct module. All analyses in [@raju2026geometric], [@raju2026canary], and [@raju2026crispr] were conducted using `Shesha`, with reproducible artifacts available as six Colab tutorials (each executable in under 5 minutes).
+`Shesha` has been used as the primary analysis framework in three lines of published research, each corresponding to a distinct module. All analyses in [@raju2026geometric], [@raju2026canary], and [@raju2026crispr] were conducted using `Shesha`, with reproducible artifacts available as seven Colab tutorials (each executable in under 5 minutes).
 
 **General Representation Analysis**: `Shesha`'s unsupervised metrics were used to evaluate manifold consistency across varied model architectures, demonstrating that geometric stability predicts generalization independently of benchmark performance.
 
