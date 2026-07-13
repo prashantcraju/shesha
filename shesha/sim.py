@@ -8,7 +8,6 @@ intrinsic geometric robustness, similarity measures extrinsic alignment.
 Key distinction from the paper:
 - Similarity is an *extrinsic* property (how one representation aligns with another)
 - Stability is an *intrinsic* property (how robust a representation's geometry is)
-- These are empirically uncorrelated (ρ ≈ 0.01)
 """
 
 import numpy as np
