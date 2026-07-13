@@ -2,6 +2,17 @@
 
 All notable changes to the `shesha` package will be documented in this file.
 
+## [0.2.27] - 2026-07-12
+
+### Fixed
+
+- **LLM embeddings / drift tutorials**: `load_dataset("glue", "sst2")` updated to
+  `load_dataset("nyu-mll/glue", "sst2")` for current Hugging Face Hub namespace rules.
+- **Drift tutorial LoRA section**: pin `peft>=0.18.0,<0.19.0` to avoid Colab's bundled
+  `torchao<0.16` incompatibility with newer peft; consolidated duplicate LoRA cells.
+
+---
+
 ## [0.2.26] - 2026-06-21
 
 ### Changed

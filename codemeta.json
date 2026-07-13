@@ -2,7 +2,7 @@
   "@context": "https://w3id.org/codemeta/3.1",
   "@type": "SoftwareSourceCode",
   "name": "Shesha: Self-Consistency Metrics for Representational Stability",
-  "version": "0.2.26",
+  "version": "0.2.27",
   "description": "Self-consistency metrics for representational stability analysis. Shesha measures the geometric stability of high-dimensional representations by quantifying the self-consistency of their pairwise distance structure under controlled internal perturbations.",
   "license": "https://spdx.org/licenses/MIT",
   "codeRepository": "https://github.com/prashantcraju/shesha",
@@ -11,7 +11,7 @@
   "continuousIntegration": "https://github.com/prashantcraju/shesha/actions",
   "developmentStatus": "active",
   "dateCreated": "2026-01-12",
-  "dateModified": "2026-07-04",
+  "dateModified": "2026-07-12",
   "datePublished": "2026-01-12",
   "identifier": "https://doi.org/10.5281/zenodo.18227453",
   "author": [
