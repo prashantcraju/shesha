@@ -46,7 +46,7 @@ For the full API reference, installation guide, and usage examples, see the [doc
 
 ## Tutorials
 
-Explore `shesha` with these interactive notebooks (each takes < 5 minutes to run):
+Explore `shesha` with these interactive notebooks (most take < 5 minutes; the vision tutorial is longer because it loads several pretrained models):
 
 * [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/prashantcraju/shesha/blob/main/tutorials/llm_embeddings_tutorial.ipynb) **LLM Embeddings** - Analyze embedding stability across layers and models using `feature_split`.
 * [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/prashantcraju/shesha/blob/main/tutorials/steering_vectors_tutorial.ipynb) **Steering Vectors** - Compute steering vectors from contrastive pairs and measure their consistency.
