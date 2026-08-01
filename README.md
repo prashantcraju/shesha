@@ -11,6 +11,8 @@
 
 # Shesha
 
+**Pronunciation:** SHAY-shuh (/ˈʃeɪʃə/)
+
 Self-consistency metrics for representational stability analysis.
 
 Shesha measures the geometric stability of high-dimensional representations by quantifying the self-consistency of their pairwise distance structure (RDMs) under controlled internal perturbations.

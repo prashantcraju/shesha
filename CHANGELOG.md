@@ -2,6 +2,14 @@
 
 All notable changes to the `shesha` package will be documented in this file.
 
+## [Unreleased]
+
+### Changed
+
+- **README / README_PYPI**: added pronunciation guide for Shesha (**SHAY-shuh**, `/ˈʃeɪʃə/`).
+
+---
+
 ## [0.2.27] - 2026-07-12
 
 ### Fixed
