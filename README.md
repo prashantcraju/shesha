@@ -92,7 +92,7 @@ If you use the supervised variants (`supervised_alignment`, `lda_stability`, `va
 If you use the `shesha.bio` module, please also cite:
 ```bibtex
 @article{raju2026crispr,
-  title = {Geometric coherence of single-cell {CRISPR} perturbations reveals regulatory architecture and predicts cellular stress},
+  title = {Directional coherence and effect magnitude in single-cell CRISPR perturbation responses},
   author = {Raju, Prashant C.},
   journal = {arXiv preprint arXiv:2604.16642},
   year = {2026}
