@@ -1,5 +1,5 @@
 """
-Shesha Bio: Stability metrics for biological perturbation experiments.
+Shesha Bio: Coherence metrics for biological perturbation experiments.
 
 This module provides Shesha variants for single-cell and perturbation biology,
 measuring the consistency of perturbation effects across individual cells.
@@ -21,13 +21,13 @@ except ImportError:
     AnnData = None
 
 __all__ = [
-    "perturbation_stability", 
-    "perturbation_stability_whitened",
-    "perturbation_stability_knn",
+    "perturbation_coherence", 
+    "perturbation_coherence_whitened",
+    "perturbation_coherence_knn",
     "perturbation_effect_size", 
-    "compute_stability",
-    "compute_stability_whitened",
-    "compute_stability_knn",
+    "compute_coherence",
+    "compute_coherence_whitened",
+    "compute_coherence_knn",
     "compute_magnitude",
     "split_half_reproducibility",
     "magnitude_matched_comparison",
@@ -37,7 +37,7 @@ __all__ = [
 EPS = 1e-12
 
 
-def perturbation_stability(
+def perturbation_coherence(
     X_control: np.ndarray,
     X_perturbed: np.ndarray,
     method: Literal["standard", "whitened", "knn"] = "standard",
@@ -50,7 +50,7 @@ def perturbation_stability(
     ci: float = 0.95,
 ) -> Union[float, dict]:
     """
-    Perturbation stability: consistency of perturbation effects across samples.
+    Perturbation coherence: consistency of perturbation effects across samples.
     
     Measures whether individual perturbed samples shift in a consistent direction
     relative to the control population. High values indicate that the perturbation
@@ -64,7 +64,7 @@ def perturbation_stability(
     X_perturbed : np.ndarray
         Perturbed population embeddings, shape (n_perturbed, n_features).
     method : {'standard', 'whitened', 'knn'}, default='standard'
-        Method for computing stability:
+        Method for computing coherence:
         - 'standard': Global control centroid (default)
         - 'whitened': Mahalanobis-scaled using control covariance
         - 'knn': Local k-NN matched control centroids
@@ -87,7 +87,7 @@ def perturbation_stability(
     Returns
     -------
     float or dict
-        If n_bootstrap_ci is None: stability score in [-1, 1].
+        If n_bootstrap_ci is None: coherence score in [-1, 1].
         Higher = more consistent perturbation effect.
         If n_bootstrap_ci is set: dict with keys 'mean', 'ci_low', 'ci_high',
         'std', 'n_bootstraps', 'ci_level'.
@@ -99,11 +99,11 @@ def perturbation_stability(
     >>> shift = np.random.randn(50)  # consistent direction
     >>> X_pert = X_ctrl + shift + np.random.randn(500, 50) * 0.1
     >>> 
-    >>> # Standard stability
-    >>> stability = perturbation_stability(X_ctrl, X_pert, method='standard')
+    >>> # Standard coherence
+    >>> coherence = perturbation_coherence(X_ctrl, X_pert, method='standard')
     >>> 
     >>> # With bootstrap CI
-    >>> result = perturbation_stability(X_ctrl, X_pert, n_bootstrap_ci=1000)
+    >>> result = perturbation_coherence(X_ctrl, X_pert, n_bootstrap_ci=1000)
     >>> print(f"{result['mean']:.3f} [{result['ci_low']:.3f}, {result['ci_high']:.3f}]")
     
     Notes
@@ -123,7 +123,7 @@ def perturbation_stability(
 
     if n_bootstrap_ci is not None:
         return bootstrap_ci_bio(
-            perturbation_stability, n_bootstrap_ci, ci, seed,
+            perturbation_coherence, n_bootstrap_ci, ci, seed,
             X_control, X_perturbed,
             method=method, metric=metric, k=k,
             regularization=regularization, max_samples=max_samples,
@@ -142,15 +142,15 @@ def perturbation_stability(
     
     # Dispatch to appropriate method
     if method == "standard":
-        return _perturbation_stability_standard(
+        return _perturbation_coherence_standard(
             X_control, X_perturbed, metric, seed, max_samples
         )
     elif method == "whitened":
-        return _perturbation_stability_whitened(
+        return _perturbation_coherence_whitened(
             X_control, X_perturbed, regularization, seed, max_samples
         )
     elif method == "knn":
-        return _perturbation_stability_knn(
+        return _perturbation_coherence_knn(
             X_control, X_perturbed, k, metric, seed, max_samples
         )
     else:
@@ -159,14 +159,14 @@ def perturbation_stability(
         )
 
 
-def _perturbation_stability_standard(
+def _perturbation_coherence_standard(
     X_control: np.ndarray,
     X_perturbed: np.ndarray,
     metric: str = "cosine",
     seed: Optional[int] = None,
     max_samples: Optional[int] = 1000,
 ) -> float:
-    """Internal implementation of standard perturbation stability."""
+    """Internal implementation of standard perturbation coherence."""
     rng = np.random.default_rng(seed)
     
     # Subsample perturbed if needed
@@ -238,7 +238,7 @@ def _iter_perturbations(adata, perturbation_key, control_label, layer):
         yield pert, X_ctrl, _get_array(adata, pert_mask, layer)
 
 
-def compute_stability(
+def compute_coherence(
     adata: "AnnData",
     perturbation_key: str,
     control_label: str = "control",
@@ -247,9 +247,9 @@ def compute_stability(
     **kwargs
 ) -> dict:
     """
-    Scanpy-compatible wrapper for perturbation stability.
+    Scanpy-compatible wrapper for perturbation coherence.
     
-    Computes stability for all perturbations in an AnnData object.
+    Computes coherence for all perturbations in an AnnData object.
     
     Parameters
     ----------
@@ -262,33 +262,33 @@ def compute_stability(
     layer : str, optional
         Layer to use for computation. If None, uses .X.
     method : {'standard', 'whitened', 'knn'}, default='standard'
-        Method for computing stability:
+        Method for computing coherence:
         - 'standard': Global control centroid
         - 'whitened': Mahalanobis-scaled using control covariance
         - 'knn': Local k-NN matched control centroids
     **kwargs
-        Additional arguments passed to perturbation_stability()
+        Additional arguments passed to perturbation_coherence()
         (e.g., k=50 for knn, regularization=1e-6 for whitened).
     
     Returns
     -------
     dict
-        Dictionary mapping perturbation names to stability scores.
+        Dictionary mapping perturbation names to coherence scores.
     
     Examples
     --------
     >>> import shesha.bio as bio
-    >>> # Standard stability
-    >>> stability = bio.compute_stability(adata, "perturbation")
-    >>> # Whitened stability
-    >>> stability_w = bio.compute_stability(adata, "perturbation", method="whitened")
-    >>> # k-NN stability
-    >>> stability_knn = bio.compute_stability(adata, "perturbation", method="knn", k=50)
+    >>> # Standard coherence
+    >>> coherence = bio.compute_coherence(adata, "perturbation")
+    >>> # Whitened coherence
+    >>> coherence_w = bio.compute_coherence(adata, "perturbation", method="whitened")
+    >>> # k-NN coherence
+    >>> coherence_knn = bio.compute_coherence(adata, "perturbation", method="knn", k=50)
     """
     if AnnData is None or not isinstance(adata, AnnData):
         raise ImportError("anndata is required for this function.")
     return {
-        pert: perturbation_stability(X_ctrl, X_pert, method=method, **kwargs)
+        pert: perturbation_coherence(X_ctrl, X_pert, method=method, **kwargs)
         for pert, X_ctrl, X_pert in _iter_perturbations(
             adata, perturbation_key, control_label, layer
         )
@@ -314,7 +314,7 @@ def perturbation_effect_size(
         Perturbed population embeddings.
     metric : str, default="euclidean"
         - 'euclidean': Raw L2 distance between centroids (Magnitude). 
-           Use this for geometric plots (Stability vs Magnitude).
+           Use this for geometric plots (Coherence vs Magnitude).
         - 'cohen': Standardized effect size (Magnitude / Pooled SD).
            Use this for statistical power analysis.
     n_bootstrap_ci : int, optional
@@ -387,7 +387,7 @@ def compute_magnitude(
     }
 
 
-def compute_stability_whitened(
+def compute_coherence_whitened(
     adata: "AnnData",
     perturbation_key: str,
     control_label: str = "control",
@@ -397,9 +397,9 @@ def compute_stability_whitened(
     max_samples: Optional[int] = 1000,
 ) -> dict:
     """
-    Scanpy-compatible wrapper for whitened perturbation stability.
+    Scanpy-compatible wrapper for whitened perturbation coherence.
     
-    Convenience wrapper for compute_stability(..., method='whitened').
+    Convenience wrapper for compute_coherence(..., method='whitened').
     Consider using the unified interface instead.
     
     Parameters
@@ -422,13 +422,13 @@ def compute_stability_whitened(
     Returns
     -------
     dict
-        Dictionary mapping perturbation names to whitened stability scores.
+        Dictionary mapping perturbation names to whitened coherence scores.
     
     See Also
     --------
-    compute_stability : Unified interface with method='whitened'
+    compute_coherence : Unified interface with method='whitened'
     """
-    return compute_stability(
+    return compute_coherence(
         adata,
         perturbation_key,
         control_label=control_label,
@@ -440,7 +440,7 @@ def compute_stability_whitened(
     )
 
 
-def compute_stability_knn(
+def compute_coherence_knn(
     adata: "AnnData",
     perturbation_key: str,
     control_label: str = "control",
@@ -451,9 +451,9 @@ def compute_stability_knn(
     max_samples: Optional[int] = 1000,
 ) -> dict:
     """
-    Scanpy-compatible wrapper for k-NN matched control stability.
+    Scanpy-compatible wrapper for k-NN matched control coherence.
     
-    Convenience wrapper for compute_stability(..., method='knn').
+    Convenience wrapper for compute_coherence(..., method='knn').
     Consider using the unified interface instead.
     
     Parameters
@@ -478,13 +478,13 @@ def compute_stability_knn(
     Returns
     -------
     dict
-        Dictionary mapping perturbation names to k-NN matched stability scores.
+        Dictionary mapping perturbation names to k-NN matched coherence scores.
     
     See Also
     --------
-    compute_stability : Unified interface with method='knn'
+    compute_coherence : Unified interface with method='knn'
     """
-    return compute_stability(
+    return compute_coherence(
         adata,
         perturbation_key,
         control_label=control_label,
@@ -497,14 +497,14 @@ def compute_stability_knn(
     )
 
 
-def _perturbation_stability_whitened(
+def _perturbation_coherence_whitened(
     X_control: np.ndarray,
     X_perturbed: np.ndarray,
     regularization: float = 1e-6,
     seed: Optional[int] = None,
     max_samples: Optional[int] = 1000,
 ) -> float:
-    """Internal implementation of whitened perturbation stability."""
+    """Internal implementation of whitened perturbation coherence."""
     # Subsample if needed
     if max_samples and len(X_perturbed) > max_samples:
         rng = np.random.default_rng(seed)
@@ -548,15 +548,15 @@ def _perturbation_stability_whitened(
     if np.sum(valid_idx) < 5:
         return 0.0
     
-    # Compute stability as mean cosine similarity to mean direction
+    # Compute coherence as mean cosine similarity to mean direction
     unit_mean = mean_shift / mean_magnitude
     cosine_sims = np.dot(shift_vectors[valid_idx], unit_mean) / norms[valid_idx]
-    stability = np.mean(cosine_sims)
+    coherence = np.mean(cosine_sims)
     
-    return float(stability)
+    return float(coherence)
 
 
-def perturbation_stability_whitened(
+def perturbation_coherence_whitened(
     X_control: np.ndarray,
     X_perturbed: np.ndarray,
     regularization: float = 1e-6,
@@ -564,9 +564,9 @@ def perturbation_stability_whitened(
     max_samples: Optional[int] = 1000,
 ) -> float:
     """
-    Whitened (Mahalanobis) perturbation stability.
+    Whitened (Mahalanobis) perturbation coherence.
     
-    Convenience wrapper for perturbation_stability(..., method='whitened').
+    Convenience wrapper for perturbation_coherence(..., method='whitened').
     Consider using the unified interface instead.
     
     Parameters
@@ -585,13 +585,13 @@ def perturbation_stability_whitened(
     Returns
     -------
     float
-        Whitened stability score in [-1, 1].
+        Whitened coherence score in [-1, 1].
     
     See Also
     --------
-    perturbation_stability : Unified interface with method='whitened'
+    perturbation_coherence : Unified interface with method='whitened'
     """
-    return perturbation_stability(
+    return perturbation_coherence(
         X_control, X_perturbed, 
         method='whitened',
         regularization=regularization,
@@ -600,7 +600,7 @@ def perturbation_stability_whitened(
     )
 
 
-def _perturbation_stability_knn(
+def _perturbation_coherence_knn(
     X_control: np.ndarray,
     X_perturbed: np.ndarray,
     k: int = 50,
@@ -608,12 +608,12 @@ def _perturbation_stability_knn(
     seed: Optional[int] = None,
     max_samples: Optional[int] = 1000,
 ) -> float:
-    """Internal implementation of k-NN perturbation stability."""
+    """Internal implementation of k-NN perturbation coherence."""
     try:
         from sklearn.neighbors import NearestNeighbors
     except ImportError:
         raise ImportError(
-            "perturbation_stability with method='knn' requires scikit-learn. "
+            "perturbation_coherence with method='knn' requires scikit-learn. "
             "Install with: pip install scikit-learn"
         )
     
@@ -655,15 +655,15 @@ def _perturbation_stability_knn(
     if np.sum(valid_idx) < 5:
         return 0.0
     
-    # Compute stability as mean cosine similarity to mean direction
+    # Compute coherence as mean cosine similarity to mean direction
     unit_mean = mean_shift / mean_magnitude
     cosine_sims = np.dot(shift_vectors[valid_idx], unit_mean) / norms[valid_idx]
-    stability = np.mean(cosine_sims)
+    coherence = np.mean(cosine_sims)
     
-    return float(stability)
+    return float(coherence)
 
 
-def perturbation_stability_knn(
+def perturbation_coherence_knn(
     X_control: np.ndarray,
     X_perturbed: np.ndarray,
     k: int = 50,
@@ -672,9 +672,9 @@ def perturbation_stability_knn(
     max_samples: Optional[int] = 1000,
 ) -> float:
     """
-    k-NN matched control perturbation stability.
+    k-NN matched control perturbation coherence.
     
-    Convenience wrapper for perturbation_stability(..., method='knn').
+    Convenience wrapper for perturbation_coherence(..., method='knn').
     Consider using the unified interface instead.
     
     Parameters
@@ -695,13 +695,13 @@ def perturbation_stability_knn(
     Returns
     -------
     float
-        k-NN matched stability score in [-1, 1].
+        k-NN matched coherence score in [-1, 1].
     
     See Also
     --------
-    perturbation_stability : Unified interface with method='knn'
+    perturbation_coherence : Unified interface with method='knn'
     """
-    return perturbation_stability(
+    return perturbation_coherence(
         X_control, X_perturbed,
         method='knn',
         k=k,
@@ -863,26 +863,26 @@ def split_half_reproducibility(
 
 def magnitude_matched_comparison(
     repro_df: "pd.DataFrame",
-    stability_col: str = "Sp",
+    coherence_col: str = "Sp",
     repro_col: str = "split_half_cosine",
     magnitude_col: str = "Mp",
     n_bins: int = 4,
 ) -> "pd.DataFrame":
     """
-    Magnitude-matched comparison of high-stability vs low-stability groups.
+    Magnitude-matched comparison of high-coherence vs low-coherence groups.
 
     Bins perturbations by magnitude, then within each bin splits at the
-    stability median to compare reproducibility between the high- and
-    low-stability halves. This controls for the confound that larger-effect
+    coherence median to compare reproducibility between the high- and
+    low-coherence halves. This controls for the confound that larger-effect
     perturbations may appear more reproducible simply due to higher SNR.
 
     Parameters
     ----------
     repro_df : pd.DataFrame
-        DataFrame containing at least the columns specified by stability_col,
+        DataFrame containing at least the columns specified by coherence_col,
         repro_col, and magnitude_col.
-    stability_col : str, default="Sp"
-        Column with stability scores.
+    coherence_col : str, default="Sp"
+        Column with coherence scores.
     repro_col : str, default="split_half_cosine"
         Column with reproducibility scores (e.g. split-half cosine).
     magnitude_col : str, default="Mp"
@@ -894,7 +894,7 @@ def magnitude_matched_comparison(
     -------
     pd.DataFrame
         One row per magnitude bin with columns:
-        mag_bin, n, mag_min, mag_max, high_stability_mean, low_stability_mean,
+        mag_bin, n, mag_min, mag_max, high_coherence_mean, low_coherence_mean,
         difference, within_bin_rho, within_bin_pvalue.
 
     Examples
@@ -902,7 +902,7 @@ def magnitude_matched_comparison(
     >>> from shesha.bio import magnitude_matched_comparison
     >>> bins = magnitude_matched_comparison(
     ...     repro_df,
-    ...     stability_col="Sp",
+    ...     coherence_col="Sp",
     ...     repro_col="split_half_cosine",
     ...     magnitude_col="Mp",
     ...     n_bins=4,
@@ -910,7 +910,7 @@ def magnitude_matched_comparison(
     """
     from scipy.stats import spearmanr
 
-    df = repro_df.dropna(subset=[stability_col, repro_col, magnitude_col]).copy()
+    df = repro_df.dropna(subset=[coherence_col, repro_col, magnitude_col]).copy()
 
     if len(df) < n_bins * 4:
         raise ValueError(
@@ -929,22 +929,22 @@ def magnitude_matched_comparison(
         if len(subset) < 6:
             continue
 
-        sp_median = subset[stability_col].median()
-        high = subset[subset[stability_col] >= sp_median]
-        low = subset[subset[stability_col] < sp_median]
+        sp_median = subset[coherence_col].median()
+        high = subset[subset[coherence_col] >= sp_median]
+        low = subset[subset[coherence_col] < sp_median]
 
         mean_high = high[repro_col].mean()
         mean_low = low[repro_col].mean()
 
-        rho, pval = spearmanr(subset[stability_col], subset[repro_col])
+        rho, pval = spearmanr(subset[coherence_col], subset[repro_col])
 
         results.append({
             "mag_bin": q,
             "n": len(subset),
             "mag_min": float(subset[magnitude_col].min()),
             "mag_max": float(subset[magnitude_col].max()),
-            "high_stability_mean": float(mean_high),
-            "low_stability_mean": float(mean_low),
+            "high_coherence_mean": float(mean_high),
+            "low_coherence_mean": float(mean_low),
             "difference": float(mean_high - mean_low),
             "within_bin_rho": float(rho),
             "within_bin_pvalue": float(pval),
@@ -959,34 +959,34 @@ def magnitude_matched_comparison(
 
 def discordance(
     df: "pd.DataFrame",
-    stability_col: str = "Sp",
+    coherence_col: str = "Sp",
     magnitude_col: str = "Mp",
     method: Literal["linear", "rank", "loess"] = "linear",
     loess_frac: float = 0.3,
 ) -> "pd.Series":
     """
     Compute discordance scores: how much a perturbation deviates from the
-    expected stability-magnitude relationship.
+    expected coherence-magnitude relationship.
 
     High discordance (positive values) identifies perturbations that are
-    less stable than expected given their effect size — candidates for
+    less coherent than expected given their effect size — candidates for
     pleiotropic or heterogeneous effects.
 
     Parameters
     ----------
     df : pd.DataFrame
-        DataFrame containing at least the columns specified by stability_col
+        DataFrame containing at least the columns specified by coherence_col
         and magnitude_col.
-    stability_col : str, default="Sp"
-        Column with stability scores.
+    coherence_col : str, default="Sp"
+        Column with coherence scores.
     magnitude_col : str, default="Mp"
         Column with magnitude/effect-size scores.
     method : {'linear', 'rank', 'loess'}, default='linear'
-        How to model the expected stability-magnitude relationship:
+        How to model the expected coherence-magnitude relationship:
         - 'linear': OLS residual, sign-flipped, z-scored.
         - 'rank': rank(Mp) - rank(Sp), z-scored.
         - 'loess': LOESS residual (local regression), sign-flipped, z-scored.
-          Captures nonlinear magnitude-stability trends.
+          Captures nonlinear magnitude-coherence trends.
     loess_frac : float, default=0.3
         Fraction of data used for each local regression window (only used
         when method='loess'). Smaller values follow the data more closely;
@@ -996,22 +996,22 @@ def discordance(
     -------
     pd.Series
         Z-scored discordance scores indexed like the input DataFrame.
-        Positive = less stable than expected (discordant).
-        Negative = more stable than expected (concordant).
+        Positive = less coherent than expected (discordant).
+        Negative = more coherent than expected (concordant).
 
     Examples
     --------
     >>> from shesha.bio import discordance
-    >>> df["disc_linear"] = discordance(df, stability_col="Sp", magnitude_col="Mp")
+    >>> df["disc_linear"] = discordance(df, coherence_col="Sp", magnitude_col="Mp")
     >>> df["disc_loess"] = discordance(df, method="loess", loess_frac=0.3)
     >>> # Top discordant perturbations
     >>> df.nlargest(10, "disc_loess")
     """
     from scipy.stats import rankdata
 
-    sub = df[[stability_col, magnitude_col]].dropna()
+    sub = df[[coherence_col, magnitude_col]].dropna()
     mag = sub[magnitude_col].values.astype(np.float64)
-    stab = sub[stability_col].values.astype(np.float64)
+    coh = sub[coherence_col].values.astype(np.float64)
 
     if len(sub) < 10:
         raise ValueError(
@@ -1020,14 +1020,14 @@ def discordance(
 
     if method == "linear":
         X = np.column_stack([np.ones_like(mag), mag])
-        beta = np.linalg.lstsq(X, stab, rcond=None)[0]
+        beta = np.linalg.lstsq(X, coh, rcond=None)[0]
         fitted = X @ beta
-        resid = stab - fitted
+        resid = coh - fitted
         d = -resid
 
     elif method == "rank":
         rank_m = rankdata(mag)
-        rank_s = rankdata(stab)
+        rank_s = rankdata(coh)
         d = rank_m - rank_s
 
     elif method == "loess":
@@ -1038,8 +1038,8 @@ def discordance(
                 "method='loess' requires statsmodels. "
                 "Install with: pip install statsmodels"
             )
-        fitted = lowess(stab, mag, frac=loess_frac, return_sorted=False)
-        resid = stab - fitted
+        fitted = lowess(coh, mag, frac=loess_frac, return_sorted=False)
+        resid = coh - fitted
         d = -resid
 
     else:

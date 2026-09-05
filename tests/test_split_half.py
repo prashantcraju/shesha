@@ -196,7 +196,7 @@ class TestMagnitudeMatchedComparison:
         result = magnitude_matched_comparison(repro_df)
         expected_cols = {
             "mag_bin", "n", "mag_min", "mag_max",
-            "high_stability_mean", "low_stability_mean",
+            "high_coherence_mean", "low_coherence_mean",
             "difference", "within_bin_rho", "within_bin_pvalue",
         }
         assert set(result.columns) == expected_cols
@@ -211,7 +211,7 @@ class TestMagnitudeMatchedComparison:
     def test_difference_is_high_minus_low(self, repro_df):
         result = magnitude_matched_comparison(repro_df)
         for _, row in result.iterrows():
-            expected = row["high_stability_mean"] - row["low_stability_mean"]
+            expected = row["high_coherence_mean"] - row["low_coherence_mean"]
             assert abs(row["difference"] - expected) < 1e-10
 
     def test_too_few_raises(self):
@@ -228,7 +228,7 @@ class TestMagnitudeMatchedComparison:
             "repro": rng.random(n),
         })
         result = magnitude_matched_comparison(
-            df, stability_col="stability", repro_col="repro",
+            df, coherence_col="stability", repro_col="repro",
             magnitude_col="magnitude", n_bins=4,
         )
         assert len(result) == 4
@@ -332,7 +332,7 @@ class TestDiscordance:
             "stability": rng.standard_normal(n),
             "magnitude": np.abs(rng.standard_normal(n)) + 0.1,
         })
-        result = discordance(df, stability_col="stability", magnitude_col="magnitude")
+        result = discordance(df, coherence_col="stability", magnitude_col="magnitude")
         assert len(result) == n
 
     def test_nan_handling(self):
@@ -356,7 +356,7 @@ class TestDiscordance:
         n = 100
         mp = np.abs(rng.standard_normal(n)) + 1.0
         sp = 0.8 * mp + rng.standard_normal(n) * 0.1
-        sp[0] = 0.0  # high magnitude but very low stability -> discordant
+        sp[0] = 0.0  # high magnitude but very low coherence -> discordant
         mp[0] = 5.0
         df = pd.DataFrame({"Sp": sp, "Mp": mp})
         result = discordance(df, method="linear")

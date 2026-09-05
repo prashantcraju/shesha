@@ -54,8 +54,7 @@ Explore `shesha` with these interactive notebooks (most take < 5 minutes; the vi
 * [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/prashantcraju/shesha/blob/main/tutorials/vision_models_tutorial.ipynb) **Vision Models** - Compare geometric stability across ResNets, ViTs, and other architectures.
 * [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/prashantcraju/shesha/blob/main/tutorials/drift_tutorial.ipynb) **Representational Drift** - Measure drift from Gaussian noise injection and LoRA fine-tuning.
 * [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/prashantcraju/shesha/blob/main/tutorials/training_drift_tutorial.ipynb) **Training Dynamics** - Track geometric stability during training to detect representation collapse.
-* [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/prashantcraju/shesha/blob/main/tutorials/crispr_tutorial.ipynb) **CRISPR (Bio)** - Use `shesha.bio` to analyze stability in single-cell CRISPR perturbation experiments.
-* [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/prashantcraju/shesha/blob/main/tutorials/crispr_split_half_tutorial.ipynb) **CRISPR Split-Half Reproducibility (Bio)** - Measure effect-direction reproducibility with `split_half_reproducibility` and control for magnitude confounds with `magnitude_matched_comparison`.
+* [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/prashantcraju/shesha/blob/main/tutorials/crispr_tutorial.ipynb) **CRISPR (Bio)** - Use `shesha.bio` to analyze coherence in single-cell CRISPR perturbation experiments.
 
 ## Citation
 

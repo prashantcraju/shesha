@@ -19,8 +19,8 @@ Basic usage:
     >>> drift = shesha.rdm_drift(X_before, X_after)
     
     >>> # Biological perturbation analysis
-    >>> from shesha.bio import perturbation_stability
-    >>> stability = perturbation_stability(X_control, X_perturbed)
+    >>> from shesha.bio import perturbation_coherence
+    >>> coherence = perturbation_coherence(X_control, X_perturbed)
 """
 
 from .core import (

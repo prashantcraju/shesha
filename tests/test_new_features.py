@@ -60,8 +60,8 @@ def test_lda_stability_multiclass_error():
     print("[PASS] LDA stability correctly rejects multiclass")
 
 
-def test_perturbation_stability_whitened():
-    """Test whitened perturbation stability."""
+def test_perturbation_coherence_whitened():
+    """Test whitened perturbation coherence."""
     np.random.seed(320)
     
     # Control population
@@ -71,20 +71,20 @@ def test_perturbation_stability_whitened():
     shift = np.random.randn(50)
     X_pert = X_ctrl[:250] + shift + np.random.randn(250, 50) * 0.1
     
-    stability = shesha.bio.perturbation_stability_whitened(
+    coherence = shesha.bio.perturbation_coherence_whitened(
         X_ctrl, X_pert, max_samples=200, seed=320
     )
     
-    assert isinstance(stability, float)
-    assert not np.isnan(stability)
-    assert -1 <= stability <= 1
-    assert stability > 0.5  # Should be high for coherent perturbation
-    print(f"[PASS] Whitened perturbation stability: {stability:.3f}")
+    assert isinstance(coherence, float)
+    assert not np.isnan(coherence)
+    assert -1 <= coherence <= 1
+    assert coherence > 0.5  # Should be high for coherent perturbation
+    print(f"[PASS] Whitened perturbation coherence: {coherence:.3f}")
 
 
 @pytest.mark.skipif(not SKLEARN_AVAILABLE, reason="scikit-learn not installed")
-def test_perturbation_stability_knn():
-    """Test k-NN matched control perturbation stability."""
+def test_perturbation_coherence_knn():
+    """Test k-NN matched control perturbation coherence."""
     np.random.seed(320)
     
     # Heterogeneous control population (two subpopulations)
@@ -97,19 +97,19 @@ def test_perturbation_stability_knn():
     shift = np.random.randn(50)
     X_pert = X_ctrl[:200] + shift + np.random.randn(200, 50) * 0.1
     
-    stability = shesha.bio.perturbation_stability_knn(
+    coherence = shesha.bio.perturbation_coherence_knn(
         X_ctrl, X_pert, k=50, max_samples=150, seed=320
     )
     
-    assert isinstance(stability, float)
-    assert not np.isnan(stability)
-    assert -1 <= stability <= 1
-    assert stability > 0.5  # Should be high for coherent perturbation
-    print(f"[PASS] k-NN perturbation stability: {stability:.3f}")
+    assert isinstance(coherence, float)
+    assert not np.isnan(coherence)
+    assert -1 <= coherence <= 1
+    assert coherence > 0.5  # Should be high for coherent perturbation
+    print(f"[PASS] k-NN perturbation coherence: {coherence:.3f}")
 
 
 def test_comparison_standard_vs_whitened():
-    """Compare standard and whitened perturbation stability."""
+    """Compare standard and whitened perturbation coherence."""
     np.random.seed(320)
     
     X_ctrl = np.random.randn(300, 30)
@@ -117,18 +117,18 @@ def test_comparison_standard_vs_whitened():
     X_pert = X_ctrl[:150] + shift + np.random.randn(150, 30) * 0.2
     
     # Standard
-    std_stab = shesha.bio.perturbation_stability(X_ctrl, X_pert, max_samples=100, seed=320)
+    std_stab = shesha.bio.perturbation_coherence(X_ctrl, X_pert, max_samples=100, seed=320)
     
     # Whitened
-    white_stab = shesha.bio.perturbation_stability_whitened(X_ctrl, X_pert, max_samples=100, seed=320)
+    white_stab = shesha.bio.perturbation_coherence_whitened(X_ctrl, X_pert, max_samples=100, seed=320)
     
     # Both should be positive and reasonably similar
     assert std_stab > 0
     assert white_stab > 0
     assert abs(std_stab - white_stab) < 0.5  # Should be in same ballpark
     
-    print(f"[PASS] Standard stability: {std_stab:.3f}")
-    print(f"[PASS] Whitened stability: {white_stab:.3f}")
+    print(f"[PASS] Standard coherence: {std_stab:.3f}")
+    print(f"[PASS] Whitened coherence: {white_stab:.3f}")
 
 
 if __name__ == "__main__":
@@ -136,7 +136,7 @@ if __name__ == "__main__":
     test_class_separation_ratio()
     test_lda_stability()
     test_lda_stability_multiclass_error()
-    test_perturbation_stability_whitened()
-    test_perturbation_stability_knn()
+    test_perturbation_coherence_whitened()
+    test_perturbation_coherence_knn()
     test_comparison_standard_vs_whitened()
     print("\n[SUCCESS] All tests passed!")

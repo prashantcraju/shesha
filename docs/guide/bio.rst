@@ -4,23 +4,23 @@ Biological Perturbation Analysis
 ``shesha.bio`` provides metrics for single-cell and CRISPR perturbation experiments.
 It works natively with `AnnData <https://anndata.readthedocs.io>`_ objects.
 
-Compute stability
+Compute coherence
 -----------------
 
-:func:`shesha.bio.compute_stability` measures per-perturbation geometric consistency
+:func:`shesha.bio.compute_coherence` measures per-perturbation geometric consistency
 relative to a control population.
 
 .. code-block:: python
 
-   from shesha.bio import compute_stability
+   from shesha.bio import compute_coherence
 
-   stability = compute_stability(
+   coherence = compute_coherence(
        adata_pca,
        perturbation_key='guide_id',
        control_label='NT',
        metric='cosine',
    )
-   print(stability['KLF1'])   # e.g. 0.85
+   print(coherence['KLF1'])   # e.g. 0.85
 
 Compute magnitude
 -----------------
@@ -43,16 +43,16 @@ from the centroid of the control population.
 Bootstrap confidence intervals
 ------------------------------
 
-The low-level functions :func:`~shesha.bio.perturbation_stability` and
+The low-level functions :func:`~shesha.bio.perturbation_coherence` and
 :func:`~shesha.bio.perturbation_effect_size` support bootstrap CIs via
 ``n_bootstrap_ci``. Control and perturbed populations are resampled independently.
 See :doc:`bootstrap_ci` for full details.
 
 .. code-block:: python
 
-   from shesha.bio import perturbation_stability
+   from shesha.bio import perturbation_coherence
 
-   result = perturbation_stability(X_ctrl, X_pert, n_bootstrap_ci=1000, seed=320)
+   result = perturbation_coherence(X_ctrl, X_pert, n_bootstrap_ci=1000, seed=320)
    print(f"{result['mean']:.3f} [{result['ci_low']:.3f}, {result['ci_high']:.3f}]")
 
 Split-half reproducibility
@@ -80,17 +80,17 @@ direct assay of biological reproducibility that is distinct from effect magnitud
 Magnitude-matched comparison
 -----------------------------
 
-:func:`shesha.bio.magnitude_matched_comparison` tests whether stability predicts
+:func:`shesha.bio.magnitude_matched_comparison` tests whether coherence predicts
 reproducibility *within* magnitude bins, controlling for the SNR confound. Perturbations
 are binned by effect size and, within each bin, the mean split-half cosine is compared
-between the high-stability and low-stability halves.
+between the high-coherence and low-coherence halves.
 
 .. code-block:: python
 
-   from shesha.bio import compute_stability, compute_magnitude, magnitude_matched_comparison
+   from shesha.bio import compute_coherence, compute_magnitude, magnitude_matched_comparison
    import pandas as pd
 
-   sp = compute_stability(adata, perturbation_key="perturbation", control_label="control")
+   sp = compute_coherence(adata, perturbation_key="perturbation", control_label="control")
    mp = compute_magnitude(adata, perturbation_key="perturbation", control_label="control")
 
    df = repro.copy()
@@ -99,19 +99,19 @@ between the high-stability and low-stability halves.
 
    bins = magnitude_matched_comparison(
        df,
-       stability_col="Sp",
+       coherence_col="Sp",
        repro_col="split_half_cosine",
        magnitude_col="Mp",
        n_bins=4,
    )
-   print(bins[["mag_bin", "n", "high_stability_mean", "low_stability_mean", "difference"]])
+   print(bins[["mag_bin", "n", "high_coherence_mean", "low_coherence_mean", "difference"]])
 
 Discordance
 -----------
 
 :func:`shesha.bio.discordance` identifies perturbations that deviate from the expected
-stability-magnitude relationship. High discordance scores flag perturbations that are
-less stable than expected given their effect size — candidates for pleiotropic or
+coherence-magnitude relationship. High discordance scores flag perturbations that are
+less coherent than expected given their effect size — candidates for pleiotropic or
 heterogeneous effects.
 
 Three methods are available:
@@ -119,7 +119,7 @@ Three methods are available:
 - **linear** (default): OLS residual, sign-flipped and z-scored. Fast and interpretable.
 - **rank**: rank(Mp) - rank(Sp), z-scored. Non-parametric; robust to outliers.
 - **loess**: Local regression (LOWESS) residual, sign-flipped and z-scored.
-  Captures nonlinear magnitude-stability trends where the relationship curves at low
+  Captures nonlinear magnitude-coherence trends where the relationship curves at low
   magnitudes. Requires ``statsmodels``.
 
 .. code-block:: python
@@ -127,12 +127,12 @@ Three methods are available:
    from shesha.bio import discordance
 
    # Linear (default)
-   df["disc_linear"] = discordance(df, stability_col="Sp", magnitude_col="Mp")
+   df["disc_linear"] = discordance(df, coherence_col="Sp", magnitude_col="Mp")
 
    # LOESS — captures nonlinear curvature
    df["disc_loess"] = discordance(
        df,
-       stability_col="Sp",
+       coherence_col="Sp",
        magnitude_col="Mp",
        method="loess",
        loess_frac=0.3,

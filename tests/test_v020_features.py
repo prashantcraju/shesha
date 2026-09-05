@@ -1,6 +1,6 @@
 """
 Tests for v0.2.0 features: class_separation_ratio, lda_stability,
-perturbation_stability method dispatch, and shesha.sim similarity metrics.
+perturbation_coherence method dispatch, and shesha.sim similarity metrics.
 
 Focuses on coverage gaps not addressed in test_new_features.py,
 test_similarity.py, and test_anndata_integration.py.
@@ -192,45 +192,45 @@ class TestLdaStability:
 
 
 # ===========================================================================
-# perturbation_stability – unified method dispatch
+# perturbation_coherence – unified method dispatch
 # ===========================================================================
 
-class TestPerturbationStabilityMethodDispatch:
+class TestPerturbationCoherenceMethodDispatch:
     """
-    Tests for the unified perturbation_stability(method=...) interface,
+    Tests for the unified perturbation_coherence(method=...) interface,
     verifying that dispatch to whitened/knn matches the standalone functions.
     """
 
     def test_standard_method_default(self, ctrl_pert_coherent):
         """Default (method='standard') should return the same as explicit call."""
         X_ctrl, X_pert = ctrl_pert_coherent
-        s_default = bio.perturbation_stability(X_ctrl, X_pert, seed=320, max_samples=150)
-        s_explicit = bio.perturbation_stability(
+        s_default = bio.perturbation_coherence(X_ctrl, X_pert, seed=320, max_samples=150)
+        s_explicit = bio.perturbation_coherence(
             X_ctrl, X_pert, method="standard", seed=320, max_samples=150
         )
         assert s_default == s_explicit
 
     def test_whitened_dispatch_matches_standalone(self, ctrl_pert_coherent):
-        """method='whitened' should equal perturbation_stability_whitened."""
+        """method='whitened' should equal perturbation_coherence_whitened."""
         X_ctrl, X_pert = ctrl_pert_coherent
-        s_dispatch = bio.perturbation_stability(
+        s_dispatch = bio.perturbation_coherence(
             X_ctrl, X_pert, method="whitened", seed=320, max_samples=150
         )
-        s_standalone = bio.perturbation_stability_whitened(
+        s_standalone = bio.perturbation_coherence_whitened(
             X_ctrl, X_pert, seed=320, max_samples=150
         )
         assert abs(s_dispatch - s_standalone) < 1e-10
 
     @requires_sklearn
     def test_knn_dispatch_matches_standalone(self, ctrl_pert_coherent):
-        """method='knn' should equal perturbation_stability_knn with same metric."""
+        """method='knn' should equal perturbation_coherence_knn with same metric."""
         X_ctrl, X_pert = ctrl_pert_coherent
-        # Must pass metric explicitly: perturbation_stability defaults to "cosine"
-        # while perturbation_stability_knn defaults to "euclidean".
-        s_dispatch = bio.perturbation_stability(
+        # Must pass metric explicitly: perturbation_coherence defaults to "cosine"
+        # while perturbation_coherence_knn defaults to "euclidean".
+        s_dispatch = bio.perturbation_coherence(
             X_ctrl, X_pert, method="knn", metric="euclidean", k=30, seed=320, max_samples=150
         )
-        s_standalone = bio.perturbation_stability_knn(
+        s_standalone = bio.perturbation_coherence_knn(
             X_ctrl, X_pert, metric="euclidean", k=30, seed=320, max_samples=150
         )
         assert abs(s_dispatch - s_standalone) < 1e-10
@@ -239,14 +239,14 @@ class TestPerturbationStabilityMethodDispatch:
         """An unknown method name should raise ValueError."""
         X_ctrl, X_pert = ctrl_pert_coherent
         with pytest.raises(ValueError, match="Unknown method"):
-            bio.perturbation_stability(X_ctrl, X_pert, method="invalid")
+            bio.perturbation_coherence(X_ctrl, X_pert, method="invalid")
 
     @requires_sklearn
     def test_coherent_high_all_methods(self, ctrl_pert_coherent):
         """All methods should return a high score for a coherent perturbation."""
         X_ctrl, X_pert = ctrl_pert_coherent
         for method in ("standard", "whitened", "knn"):
-            score = bio.perturbation_stability(
+            score = bio.perturbation_coherence(
                 X_ctrl, X_pert, method=method, k=30, seed=320, max_samples=150
             )
             assert score > 0.4, f"method='{method}' gave low score: {score:.3f}"
@@ -257,10 +257,10 @@ class TestPerturbationStabilityMethodDispatch:
         X_ctrl, X_pert_coh = ctrl_pert_coherent
         _, X_pert_rand = ctrl_pert_random
         for method in ("standard", "whitened", "knn"):
-            s_coh = bio.perturbation_stability(
+            s_coh = bio.perturbation_coherence(
                 X_ctrl, X_pert_coh, method=method, k=30, seed=320, max_samples=150
             )
-            s_rand = bio.perturbation_stability(
+            s_rand = bio.perturbation_coherence(
                 X_ctrl, X_pert_rand, method=method, k=30, seed=320, max_samples=150
             )
             assert s_coh > s_rand, (
@@ -272,7 +272,7 @@ class TestPerturbationStabilityMethodDispatch:
         X_ctrl = np.random.randn(100, 20)
         X_pert = np.random.randn(3, 20)
         for method in ("standard", "whitened", "knn"):
-            score = bio.perturbation_stability(X_ctrl, X_pert, method=method)
+            score = bio.perturbation_coherence(X_ctrl, X_pert, method=method)
             assert np.isnan(score), f"Expected NaN for method='{method}'"
 
 
@@ -414,10 +414,10 @@ class TestSimModuleAccess:
     def test_bio_new_exports(self):
         """New bio functions must be accessible via shesha.bio."""
         for fn in (
-            "perturbation_stability_whitened",
-            "perturbation_stability_knn",
-            "compute_stability_whitened",
-            "compute_stability_knn",
+            "perturbation_coherence_whitened",
+            "perturbation_coherence_knn",
+            "compute_coherence_whitened",
+            "compute_coherence_knn",
         ):
             assert hasattr(shesha.bio, fn), f"shesha.bio.{fn} not found"
 

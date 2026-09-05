@@ -5,8 +5,8 @@ Uses pertpy's Norman et al 2019 dataset (CRISPRa screen).
 Install dependencies: pip install pertpy scanpy
 
 Expected behavior:
-- Strong perturbations should have higher stability (cells respond consistently)
-- Weak/noisy perturbations should have lower stability
+- Strong perturbations should have higher coherence (cells respond consistently)
+- Weak/noisy perturbations should have lower coherence
 """
 
 import numpy as np
@@ -16,7 +16,7 @@ import pytest
 pt = pytest.importorskip("pertpy", reason="pertpy not installed (pip install pertpy)")
 sc = pytest.importorskip("scanpy", reason="scanpy not installed (pip install scanpy)")
 
-from shesha.bio import perturbation_stability, perturbation_effect_size
+from shesha.bio import perturbation_coherence, perturbation_effect_size
 
 # Configuration
 SEED = 320
@@ -118,17 +118,17 @@ def test_on_real_data():
         X_pert = X_pca[pert_mask]
         
         # Compute metrics using shesha.bio
-        stability = perturbation_stability(X_control, X_pert, seed=SEED)
+        coherence = perturbation_coherence(X_control, X_pert, seed=SEED)
         effect = perturbation_effect_size(X_control, X_pert)
         
         results.append({
             'perturbation': str(pert)[:30],  # Truncate long names
             'n_cells': n_cells,
-            'stability': stability,
+            'coherence': coherence,
             'effect_size': effect
         })
         
-        print(f"{str(pert)[:30]:30s}  n={n_cells:4d}  stability={stability:.3f}  effect={effect:.2f}")
+        print(f"{str(pert)[:30]:30s}  n={n_cells:4d}  coherence={coherence:.3f}  effect={effect:.2f}")
     
     # Summary statistics
     df = pd.DataFrame(results)
@@ -137,36 +137,36 @@ def test_on_real_data():
     print("SUMMARY")
     print("=" * 60)
     print(f"Perturbations tested: {len(df)}")
-    print(f"Stability - mean: {df['stability'].mean():.3f}, std: {df['stability'].std():.3f}")
-    print(f"Stability - min: {df['stability'].min():.3f}, max: {df['stability'].max():.3f}")
+    print(f"Coherence - mean: {df['coherence'].mean():.3f}, std: {df['coherence'].std():.3f}")
+    print(f"Coherence - min: {df['coherence'].min():.3f}, max: {df['coherence'].max():.3f}")
     print(f"Effect size - mean: {df['effect_size'].mean():.2f}, std: {df['effect_size'].std():.2f}")
     
-    # Check correlation between stability and effect size
+    # Check correlation between coherence and effect size
     from scipy.stats import spearmanr
-    rho, p = spearmanr(df['stability'], df['effect_size'])
-    print(f"\nCorrelation (stability vs effect): rho={rho:.3f}, p={p:.4f}")
+    rho, p = spearmanr(df['coherence'], df['effect_size'])
+    print(f"\nCorrelation (coherence vs effect): rho={rho:.3f}, p={p:.4f}")
     
     # Sanity checks
     print("\n" + "=" * 60)
     print("SANITY CHECKS")
     print("=" * 60)
     
-    # Check that stability values are in expected range
-    assert df['stability'].min() >= -1, "Stability below -1"
-    assert df['stability'].max() <= 1, "Stability above 1"
-    print("✓ Stability values in [-1, 1]")
+    # Check that coherence values are in expected range
+    assert df['coherence'].min() >= -1, "Coherence below -1"
+    assert df['coherence'].max() <= 1, "Coherence above 1"
+    print("✓ Coherence values in [-1, 1]")
     
     # Check that effect sizes are non-negative
     assert df['effect_size'].min() >= 0, "Negative effect size"
     print("✓ Effect sizes non-negative")
     
     # Check that we get reasonable variation (not all same value)
-    assert df['stability'].std() > 0.01, "No variation in stability"
-    print("✓ Reasonable variation in stability")
+    assert df['coherence'].std() > 0.01, "No variation in coherence"
+    print("✓ Reasonable variation in coherence")
     
-    # Most perturbations should have positive stability (coherent effect)
-    frac_positive = (df['stability'] > 0).mean()
-    print(f"✓ {frac_positive*100:.0f}% of perturbations have positive stability")
+    # Most perturbations should have positive coherence (coherent effect)
+    frac_positive = (df['coherence'] > 0).mean()
+    print(f"✓ {frac_positive*100:.0f}% of perturbations have positive coherence")
     
     print("\n✓ All sanity checks passed!")
     
