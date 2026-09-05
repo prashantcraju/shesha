@@ -4,6 +4,10 @@ All notable changes to the `shesha` package will be documented in this file.
 
 ## [Unreleased]
 
+---
+
+## [0.2.28] - 2026-09-05
+
 ### Changed
 
 - **`shesha.bio` terminology**: renamed "stability" to "coherence" throughout the bio API
