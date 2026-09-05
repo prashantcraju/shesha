@@ -23,8 +23,8 @@ import shesha
 
 
 @pytest.mark.skipif(not ANNDATA_AVAILABLE, reason="anndata not installed")
-def test_compute_stability_whitened_anndata():
-    """Test whitened stability computation with AnnData."""
+def test_compute_coherence_whitened_anndata():
+    """Test whitened coherence computation with AnnData."""
     np.random.seed(320)
     
     # Create synthetic single-cell data
@@ -57,8 +57,8 @@ def test_compute_stability_whitened_anndata():
     adata = AnnData(X=X)
     adata.obs["perturbation"] = pert_labels
     
-    # Compute whitened stability
-    results = shesha.bio.compute_stability_whitened(
+    # Compute whitened coherence
+    results = shesha.bio.compute_coherence_whitened(
         adata,
         perturbation_key="perturbation",
         control_label="control",
@@ -73,19 +73,19 @@ def test_compute_stability_whitened_anndata():
     assert "perturbation_2" in results
     assert "control" not in results  # Control should not be in results
     
-    # Coherent perturbation should have higher stability
+    # Coherent perturbation should have higher coherence
     assert results["perturbation_1"] > results["perturbation_2"]
     assert results["perturbation_1"] > 0.5  # Should be reasonably high
     
-    print(f"[PASS] Whitened stability (AnnData):")
+    print(f"[PASS] Whitened coherence (AnnData):")
     print(f"  Perturbation 1 (coherent): {results['perturbation_1']:.3f}")
     print(f"  Perturbation 2 (incoherent): {results['perturbation_2']:.3f}")
 
 
 @pytest.mark.skipif(not ANNDATA_AVAILABLE, reason="anndata not installed")
 @pytest.mark.skipif(not SKLEARN_AVAILABLE, reason="scikit-learn not installed")
-def test_compute_stability_knn_anndata():
-    """Test k-NN matched stability computation with AnnData."""
+def test_compute_coherence_knn_anndata():
+    """Test k-NN matched coherence computation with AnnData."""
     np.random.seed(320)
     
     # Create synthetic data with heterogeneous control population
@@ -113,8 +113,8 @@ def test_compute_stability_knn_anndata():
     adata = AnnData(X=X)
     adata.obs["perturbation"] = pert_labels
     
-    # Compute k-NN matched stability
-    results = shesha.bio.compute_stability_knn(
+    # Compute k-NN matched coherence
+    results = shesha.bio.compute_coherence_knn(
         adata,
         perturbation_key="perturbation",
         control_label="control",
@@ -132,7 +132,7 @@ def test_compute_stability_knn_anndata():
     # Should detect coherent perturbation despite heterogeneous control
     assert results["gene_knockout"] > 0.4
     
-    print(f"[PASS] k-NN stability (AnnData): {results['gene_knockout']:.3f}")
+    print(f"[PASS] k-NN coherence (AnnData): {results['gene_knockout']:.3f}")
 
 
 @pytest.mark.skipif(not ANNDATA_AVAILABLE, reason="anndata not installed")
@@ -159,7 +159,7 @@ def test_anndata_with_sparse_matrix():
     adata.obs["perturbation"] = pert_labels
     
     # Should handle sparse matrix automatically
-    results_whitened = shesha.bio.compute_stability_whitened(
+    results_whitened = shesha.bio.compute_coherence_whitened(
         adata,
         perturbation_key="perturbation",
         control_label="control",
@@ -167,7 +167,7 @@ def test_anndata_with_sparse_matrix():
         seed=320
     )
     
-    results_knn = shesha.bio.compute_stability_knn(
+    results_knn = shesha.bio.compute_coherence_knn(
         adata,
         perturbation_key="perturbation",
         control_label="control",
@@ -207,7 +207,7 @@ def test_anndata_with_layer():
     adata.obs["perturbation"] = pert_labels
     
     # Compute on PCA layer
-    results = shesha.bio.compute_stability_whitened(
+    results = shesha.bio.compute_coherence_whitened(
         adata,
         perturbation_key="perturbation",
         control_label="control",
@@ -228,7 +228,7 @@ def test_anndata_with_layer():
 @pytest.mark.skipif(not ANNDATA_AVAILABLE, reason="anndata not installed")
 @pytest.mark.skipif(not SKLEARN_AVAILABLE, reason="scikit-learn not installed")
 def test_comparison_all_methods():
-    """Compare all three stability computation methods on same data."""
+    """Compare all three coherence computation methods on same data."""
     np.random.seed(320)
     
     # Create data
@@ -247,15 +247,15 @@ def test_comparison_all_methods():
     adata.obs["perturbation"] = pert_labels
     
     # Compute with all three methods
-    std_results = shesha.bio.compute_stability(
+    std_results = shesha.bio.compute_coherence(
         adata, "perturbation", max_samples=100, seed=320
     )
     
-    white_results = shesha.bio.compute_stability_whitened(
+    white_results = shesha.bio.compute_coherence_whitened(
         adata, "perturbation", max_samples=100, seed=320
     )
     
-    knn_results = shesha.bio.compute_stability_knn(
+    knn_results = shesha.bio.compute_coherence_knn(
         adata, "perturbation", k=50, max_samples=100, seed=320
     )
     
@@ -279,8 +279,8 @@ if __name__ == "__main__":
         print("AnnData not available, skipping tests")
     else:
         print("\nTesting AnnData integration for new bio features...\n")
-        test_compute_stability_whitened_anndata()
-        test_compute_stability_knn_anndata()
+        test_compute_coherence_whitened_anndata()
+        test_compute_coherence_knn_anndata()
         test_anndata_with_sparse_matrix()
         test_anndata_with_layer()
         test_comparison_all_methods()

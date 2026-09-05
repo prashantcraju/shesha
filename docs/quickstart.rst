@@ -62,7 +62,7 @@ For CRISPR or drug screens stored as `AnnData <https://anndata.readthedocs.io>`_
 
    import numpy as np
    from anndata import AnnData
-   from shesha.bio import compute_stability, compute_magnitude
+   from shesha.bio import compute_coherence, compute_magnitude
 
    # Mock single-cell data: 1000 cells, 50 PCA features
    n_cells, n_pcs = 1000, 50
@@ -70,7 +70,7 @@ For CRISPR or drug screens stored as `AnnData <https://anndata.readthedocs.io>`_
    adata.obs['guide_id'] = ['NT'] * 800 + ['KLF1'] * 200
 
    # Compute geometric consistency of each perturbation
-   stability = compute_stability(
+   coherence = compute_coherence(
        adata,
        perturbation_key='guide_id',
        control_label='NT',
@@ -85,5 +85,5 @@ For CRISPR or drug screens stored as `AnnData <https://anndata.readthedocs.io>`_
        metric='euclidean',
    )
 
-   print(f"KLF1 stability: {stability['KLF1']:.3f}")  # e.g. 0.85 — consistent phenotype
+   print(f"KLF1 coherence: {coherence['KLF1']:.3f}")  # e.g. 0.85 — consistent phenotype
    print(f"KLF1 magnitude: {magnitude['KLF1']:.3f}")  # e.g. 2.40 — strong effect

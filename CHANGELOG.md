@@ -6,7 +6,22 @@ All notable changes to the `shesha` package will be documented in this file.
 
 ### Changed
 
+- **`shesha.bio` terminology**: renamed "stability" to "coherence" throughout the bio API
+  (`perturbation_stability` → `perturbation_coherence`, `compute_stability` →
+  `compute_coherence`, plus whitened/k-NN wrappers). Related parameters
+  (`stability_col` → `coherence_col`) and result columns (`high_stability_mean` /
+  `low_stability_mean` → `high_coherence_mean` / `low_coherence_mean`) follow the same
+  rename. Docs (`docs/guide/bio.rst`, `docs/quickstart.rst`, `docs/guide/bootstrap_ci.rst`),
+  tests, examples (`anndata_advanced_stability.py` → `anndata_advanced_coherence.py`),
+  and the CRISPR / steering-vector tutorials updated to match. Core geometric
+  stability metrics (`feature_split`, `anchor_stability`, `lda_stability`, etc.)
+  are unchanged.
 - **README / README_PYPI**: added pronunciation guide for Shesha (**SHAY-shuh**, `/ˈʃeɪʃə/`).
+
+### Removed
+
+- **`tutorials/crispr_split_half_tutorial.ipynb`**: removed the CRISPR Split-Half
+  Reproducibility tutorial and its Colab links from `README.md` / `README_PYPI.md`.
 
 ---
 

@@ -99,9 +99,9 @@ Examples across modules
 
 .. code-block:: python
 
-   from shesha.bio import perturbation_stability, perturbation_effect_size
+   from shesha.bio import perturbation_coherence, perturbation_effect_size
 
-   result = perturbation_stability(X_ctrl, X_pert, n_bootstrap_ci=1000, seed=320)
+   result = perturbation_coherence(X_ctrl, X_pert, n_bootstrap_ci=1000, seed=320)
    result = perturbation_effect_size(X_ctrl, X_pert, n_bootstrap_ci=1000, seed=320)
 
 **Sim (similarity metrics)**
@@ -133,7 +133,7 @@ Resampling strategy
   ``X`` (and ``y`` if supervised) are resampled together with the same indices.
 - **Two-matrix metrics** (``rdm_similarity``, ``cka``, etc.): both ``X`` and
   ``Y`` are resampled with the **same** indices (paired bootstrap).
-- **Bio metrics** (``perturbation_stability``, ``perturbation_effect_size``):
+- **Bio metrics** (``perturbation_coherence``, ``perturbation_effect_size``):
   control and perturbed populations are resampled **independently**.
 
 Reproducibility

@@ -1,7 +1,7 @@
 """
-Example: Advanced stability analysis with AnnData integration
+Example: Advanced coherence analysis with AnnData integration
 
-This example demonstrates how to use the enhanced perturbation stability
+This example demonstrates how to use the enhanced perturbation coherence
 methods (whitened and k-NN) with AnnData objects in a scanpy-compatible workflow.
 """
 
@@ -78,7 +78,7 @@ def create_synthetic_perturbation_data():
 
 def main():
     print("=" * 70)
-    print("Advanced Perturbation Stability Analysis with AnnData")
+    print("Advanced Perturbation Coherence Analysis with AnnData")
     print("=" * 70)
     
     # Create synthetic data
@@ -87,9 +87,9 @@ def main():
     print(f"   Created AnnData: {adata.shape[0]} cells x {adata.shape[1]} features")
     print(f"   Perturbations: {adata.obs['perturbation'].value_counts().to_dict()}")
     
-    # Method 1: Standard stability (global control centroid)
-    print("\n2. Computing standard perturbation stability...")
-    std_stability = shesha.bio.compute_stability(
+    # Method 1: Standard coherence (global control centroid)
+    print("\n2. Computing standard perturbation coherence...")
+    std_coherence = shesha.bio.compute_coherence(
         adata,
         perturbation_key="perturbation",
         control_label="non-targeting",
@@ -97,13 +97,13 @@ def main():
         seed=320
     )
     
-    print("   Standard Stability Scores:")
-    for pert, score in sorted(std_stability.items(), key=lambda x: -x[1]):
+    print("   Standard Coherence Scores:")
+    for pert, score in sorted(std_coherence.items(), key=lambda x: -x[1]):
         print(f"     {pert:25s}: {score:.3f}")
     
-    # Method 2: Whitened stability (accounts for feature correlations)
-    print("\n3. Computing whitened (Mahalanobis) stability...")
-    white_stability = shesha.bio.compute_stability_whitened(
+    # Method 2: Whitened coherence (accounts for feature correlations)
+    print("\n3. Computing whitened (Mahalanobis) coherence...")
+    white_coherence = shesha.bio.compute_coherence_whitened(
         adata,
         perturbation_key="perturbation",
         control_label="non-targeting",
@@ -112,13 +112,13 @@ def main():
         seed=320
     )
     
-    print("   Whitened Stability Scores:")
-    for pert, score in sorted(white_stability.items(), key=lambda x: -x[1]):
+    print("   Whitened Coherence Scores:")
+    for pert, score in sorted(white_coherence.items(), key=lambda x: -x[1]):
         print(f"     {pert:25s}: {score:.3f}")
     
-    # Method 3: k-NN matched stability (local control baseline)
-    print("\n4. Computing k-NN matched stability...")
-    knn_stability = shesha.bio.compute_stability_knn(
+    # Method 3: k-NN matched coherence (local control baseline)
+    print("\n4. Computing k-NN matched coherence...")
+    knn_coherence = shesha.bio.compute_coherence_knn(
         adata,
         perturbation_key="perturbation",
         control_label="non-targeting",
@@ -128,8 +128,8 @@ def main():
         seed=320
     )
     
-    print("   k-NN Matched Stability Scores:")
-    for pert, score in sorted(knn_stability.items(), key=lambda x: -x[1]):
+    print("   k-NN Matched Coherence Scores:")
+    for pert, score in sorted(knn_coherence.items(), key=lambda x: -x[1]):
         print(f"     {pert:25s}: {score:.3f}")
     
     # Comparison
@@ -138,28 +138,28 @@ def main():
     print(f"   {'Perturbation':<25s} | {'Standard':>10s} | {'Whitened':>10s} | {'k-NN':>10s}")
     print("   " + "-" * 66)
     
-    for pert in sorted(std_stability.keys()):
-        print(f"   {pert:<25s} | {std_stability[pert]:>10.3f} | "
-              f"{white_stability[pert]:>10.3f} | {knn_stability[pert]:>10.3f}")
+    for pert in sorted(std_coherence.keys()):
+        print(f"   {pert:<25s} | {std_coherence[pert]:>10.3f} | "
+              f"{white_coherence[pert]:>10.3f} | {knn_coherence[pert]:>10.3f}")
     
     # Add results to AnnData
     print("\n6. Storing results in AnnData.uns...")
-    adata.uns["stability_standard"] = std_stability
-    adata.uns["stability_whitened"] = white_stability
-    adata.uns["stability_knn"] = knn_stability
+    adata.uns["coherence_standard"] = std_coherence
+    adata.uns["coherence_whitened"] = white_coherence
+    adata.uns["coherence_knn"] = knn_coherence
     
     print("   Results stored in:")
-    print("     - adata.uns['stability_standard']")
-    print("     - adata.uns['stability_whitened']")
-    print("     - adata.uns['stability_knn']")
+    print("     - adata.uns['coherence_standard']")
+    print("     - adata.uns['coherence_whitened']")
+    print("     - adata.uns['coherence_knn']")
     
     # Interpretation
     print("\n7. Interpretation:")
     print("   " + "=" * 66)
     print("""
-   High stability scores (> 0.7): Coherent, reproducible perturbation effect
-   Medium stability (0.4-0.7):    Moderate effect with some heterogeneity
-   Low stability (< 0.4):         Weak/incoherent effect or high noise
+   High coherence scores (> 0.7): Coherent, reproducible perturbation effect
+   Medium coherence (0.4-0.7):    Moderate effect with some heterogeneity
+   Low coherence (< 0.4):         Weak/incoherent effect or high noise
    
    When to use each method:
    

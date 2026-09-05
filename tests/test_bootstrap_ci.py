@@ -3,7 +3,7 @@
 import numpy as np
 import pytest
 import shesha
-from shesha.bio import perturbation_stability, perturbation_effect_size
+from shesha.bio import perturbation_coherence, perturbation_effect_size
 from shesha.sim import cka, cka_linear, cka_debiased, procrustes_similarity
 from shesha.sim import rdm_similarity as sim_rdm_similarity
 
@@ -203,27 +203,27 @@ class TestRdmDriftCI:
 # Bio module tests
 # ============================================================================
 
-class TestPerturbationStabilityCI:
+class TestPerturbationCoherenceCI:
     def test_returns_dict(self, bio_data):
         X_ctrl, X_pert = bio_data
-        result = perturbation_stability(X_ctrl, X_pert, n_bootstrap_ci=20, seed=320)
+        result = perturbation_coherence(X_ctrl, X_pert, n_bootstrap_ci=20, seed=320)
         assert_valid_ci_dict(result)
 
     def test_backward_compat(self, bio_data):
         X_ctrl, X_pert = bio_data
-        result = perturbation_stability(X_ctrl, X_pert)
+        result = perturbation_coherence(X_ctrl, X_pert)
         assert isinstance(result, float)
 
-    def test_strong_perturbation_high_stability(self, bio_data):
+    def test_strong_perturbation_high_coherence(self, bio_data):
         X_ctrl, X_pert = bio_data
-        result = perturbation_stability(X_ctrl, X_pert, n_bootstrap_ci=50, seed=320)
+        result = perturbation_coherence(X_ctrl, X_pert, n_bootstrap_ci=50, seed=320)
         assert result["mean"] > 0.7
         assert result["ci_low"] > 0.5
 
     def test_methods(self, bio_data):
         X_ctrl, X_pert = bio_data
         for method in ["standard", "whitened"]:
-            result = perturbation_stability(
+            result = perturbation_coherence(
                 X_ctrl, X_pert, method=method, n_bootstrap_ci=20, seed=320
             )
             assert_valid_ci_dict(result)
