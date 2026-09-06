@@ -6,145 +6,243 @@ All notable changes to the `shesha` package will be documented in this file.
 
 ---
 
-## [0.2.28] - 2026-09-05
+## [0.2.29] - 2026-09-06
+
+Safety release. Algorithms for `sample_split` and `anchor_stability` are
+unchanged; their current outputs must not be used for scientific inference.
+
+### Fixed
+
+- `sample_split`: the function independently draws two subsets and correlates their condensed RDMs. Corresponding entries do not refer to the same observation pairs, so the estimand is not scientifically identifiable. The algorithm is unchanged. A `FutureWarning` is now emitted on every call (including `shesha(..., variant='sample_split')`). 0.3.0 will replace this with a matched-replicate API (`replicate_stability`).
+- `anchor_stability`: fixed anchors are compared to two different probe sets, so corresponding columns do not refer to the same observations. Rank-normalizing does not restore correspondence. The algorithm is unchanged. A `FutureWarning` is now emitted on every call (including `shesha(..., variant='anchor')`). 0.3.0 will replace this with a matched-observation API (`anchor_profile_stability`).
+- `feature_split` **basis dependence**: the score measures coordinate-axis redundancy, not basis-invariant geometry. Orthogonal rotations can change the score while leaving pairwise Euclidean RDMs unchanged. This is now stated in the docstring, user guide, README / PyPI known-limitations section, and `docs/guide/caveats.rst`. The rotation example
+(`examples/similarity_comparison.py`) no longer claims the score is invariant.
+- **Silent NaN coercion**: cosine/correlation distances that are undefined (zero or constant vectors) were filled with `1.0` via `nan_to_num` with no warning. RDM paths now take `nan_policy` (`replace`, `raise`, `omit`, `propagate`). Default remains `replace` (fill `1.0`) for compatibility; a `FutureWarning` is emitted when a replacement actually occurs. The default becomes `raise` in 0.3.0. Applies to `feature_split`, `compute_rdm`, `sample_split`, `anchor_stability`, `rdm_similarity`, `rdm_drift`, and `shesha.sim.rdm_similarity`.
+- **Duplicate RDM implementations**: `shesha.rdm_similarity` and `shesha.sim.rdm_similarity` had different parameter order and divergent edge-case behavior (zero-vector NaNs; `n < 3` returned `NaN` vs `0.0`). They now share `shesha/_rdm.py`. Public signatures, including positional argument order, are unchanged. Both return `NaN` when there are fewer than 3 samples.
+- **Input validation**: public `core` / `sim` functions (and `perturbation_coherence`) now raise on non-2D inputs, non-finite values, mismatched sample/label lengths, unsupported metrics, invalid fractions, and non-positive split/bootstrap counts. Valid-but-unestimable shapes (too few samples or features) still return `NaN`.
+
+
+
+### Added
+
+- `shesha/_validate.py`: shared helpers for 2D/finite checks, label length,
+metrics, fractions, CI level, and `nan_policy`.
+- `shesha/_rdm.py`: single internal RDM compute/similarity implementation.
+- `docs/guide/caveats.rst` ("What Shesha does not establish"), linked from
+the docs index, unsupervised guide, and README / PyPI.
+- `tests/test_semantic_regression.py`: property tests for `feature_split`
+(redundant structure vs noise, axis concentration, orthogonal rotation,
+feature permutation, per-sample cosine scaling, Monte Carlo error),
+invalid-estimator warnings and near-zero scores on unmatched-sample
+constructions, RDM self-similarity / core–sim equivalence / positional
+signatures, and `nan_policy` raise/replace/propagate.
+- CI: `ruff check` and `black --check` job; built-wheel job (`python -m build`,
+`twine check`, install the wheel, import, pytest); Python 3.13 on the test
+matrix and classifiers.
+- `.github/workflows/publish.yml`: tag-triggered (`v*`) build, Trusted
+Publishing to PyPI, and GitHub Release.
+- `CONTRIBUTING.md` release section (single-source version, signed tags,
+Trusted Publishing environment name `pypi`).
+
+
 
 ### Changed
 
-- **`shesha.bio` terminology**: renamed "stability" to "coherence" throughout the bio API
-  (`perturbation_stability` → `perturbation_coherence`, `compute_stability` →
-  `compute_coherence`, plus whitened/k-NN wrappers). Related parameters
-  (`stability_col` → `coherence_col`) and result columns (`high_stability_mean` /
-  `low_stability_mean` → `high_coherence_mean` / `low_coherence_mean`) follow the same
-  rename. Docs (`docs/guide/bio.rst`, `docs/quickstart.rst`, `docs/guide/bootstrap_ci.rst`),
-  tests, examples (`anndata_advanced_stability.py` → `anndata_advanced_coherence.py`),
-  and the CRISPR / steering-vector tutorials updated to match. Core geometric
-  stability metrics (`feature_split`, `anchor_stability`, `lda_stability`, etc.)
-  are unchanged.
-- **README / README_PYPI**: added pronunciation guide for Shesha (**SHAY-shuh**, `/ˈʃeɪʃə/`).
-
-### Removed
-
-- **`tutorials/crispr_split_half_tutorial.ipynb`**: removed the CRISPR Split-Half
-  Reproducibility tutorial and its Colab links from `README.md` / `README_PYPI.md`.
+- Version is single-sourced from `pyproject.toml` (`0.2.29`).
+`shesha.__version__` and the Sphinx `release` read it.
+- `shesha()` unified-interface docs mark `sample_split` and `anchor` as
+invalid estimands.
+- Unsupervised and bootstrap-CI guides: rewrite `sample_split` /
+`anchor_stability` as compatibility-only; CIs on those functions inherit
+the same invalid estimand.
+- `examples/tutorial.py`: sample-split / anchor sections and the variant
+chooser no longer recommend those estimators for inference.
+- `dev` extras include `build` and `twine` for local release checks.
+- Package and tests formatted to satisfy the new lint job (`black`, `ruff`).
 
 ---
 
+
+
+## [0.2.28] - 2026-09-05
+
+
+
+### Changed
+
+- `shesha.bio` **terminology**: renamed "stability" to "coherence" throughout the bio API
+(`perturbation_stability` → `perturbation_coherence`, `compute_stability` →
+`compute_coherence`, plus whitened/k-NN wrappers). Related parameters
+(`stability_col` → `coherence_col`) and result columns (`high_stability_mean` /
+`low_stability_mean` → `high_coherence_mean` / `low_coherence_mean`) follow the same
+rename. Docs (`docs/guide/bio.rst`, `docs/quickstart.rst`, `docs/guide/bootstrap_ci.rst`),
+tests, examples (`anndata_advanced_stability.py` → `anndata_advanced_coherence.py`),
+and the CRISPR / steering-vector tutorials updated to match. Core geometric
+stability metrics (`feature_split`, `anchor_stability`, `lda_stability`, etc.)
+are unchanged.
+- **README / README_PYPI**: added pronunciation guide for Shesha (**SHAY-shuh**, `/ˈʃeɪʃə/`).
+
+
+
+### Removed
+
+- `tutorials/crispr_split_half_tutorial.ipynb`: removed the CRISPR Split-Half
+Reproducibility tutorial and its Colab links from `README.md` / `README_PYPI.md`.
+
+---
+
+
+
 ## [0.2.27] - 2026-07-12
+
+
 
 ### Fixed
 
 - **LLM embeddings / drift tutorials**: `load_dataset("glue", "sst2")` updated to
-  `load_dataset("nyu-mll/glue", "sst2")` for current Hugging Face Hub namespace rules.
+`load_dataset("nyu-mll/glue", "sst2")` for current Hugging Face Hub namespace rules.
 - **Drift tutorial LoRA section**: pin `peft>=0.18.0,<0.19.0` to avoid Colab's bundled
-  `torchao<0.16` incompatibility with newer peft; consolidated duplicate LoRA cells.
+`torchao<0.16` incompatibility with newer peft; consolidated duplicate LoRA cells.
 
 ---
 
+
+
 ## [0.2.26] - 2026-06-21
+
+
 
 ### Changed
 
 - **CRISPR tutorials**: install instructions now use `pip install "shesha-geometry[bio]"`
-  so `anndata` and `scikit-learn` are pulled in via the `[bio]` extra (required by
-  `shesha.bio`).
+so `anndata` and `scikit-learn` are pulled in via the `[bio]` extra (required by
+`shesha.bio`).
 
 ---
 
+
+
 ## [0.2.25] - 2026-06-18
+
+
 
 ### Changed
 
 - **Drop Python 3.8 support**: removed from CI matrix and `requires-python` (EOL Oct 2024;
-  `anndata` no longer supports it). Minimum supported Python is now **3.9**.
-- **`pyproject.toml` license field**: migrated from deprecated TOML table format
-  (`license = {text = "MIT"}`) to SPDX string (`license = "MIT"`); removed redundant
-  `License :: OSI Approved :: MIT License` classifier.
+`anndata` no longer supports it). Minimum supported Python is now **3.9**.
+- `pyproject.toml` **license field**: migrated from deprecated TOML table format
+(`license = {text = "MIT"}`) to SPDX string (`license = "MIT"`); removed redundant
+`License :: OSI Approved :: MIT License` classifier.
 - **CI**: updated `codecov/codecov-action` v4 → v5 (Node.js 24 compatibility); updated
-  `black` target-version to py39–py312.
+`black` target-version to py39–py312.
 
 ---
 
+
+
 ## [0.2.24] - 2026-06-18
+
+
 
 ### Changed
 
-- **`anndata` is now an optional dependency**: moved from required `dependencies` to the
-  `[bio]` optional extra. Install with `pip install shesha-geometry[bio]` for `shesha.bio`
-  workflows. The core package (`shesha.core`, `shesha.sim`) remains lightweight with only
-  `numpy`, `scipy`, and `pandas` as required dependencies. `anndata` is also included in
-  `[dev]` to ensure the full test suite runs in CI.
-- **`CONTRIBUTING.md`**: updated linting instructions from `flake8` to `ruff`, matching the
-  actual tooling configured in `pyproject.toml`.
-- **`README.md` / `README_PYPI.md`**: added `pip install shesha-geometry[bio]` install
-  instructions to the Installation section.
+- `anndata` **is now an optional dependency**: moved from required `dependencies` to the
+`[bio]` optional extra. Install with `pip install shesha-geometry[bio]` for `shesha.bio`
+workflows. The core package (`shesha.core`, `shesha.sim`) remains lightweight with only
+`numpy`, `scipy`, and `pandas` as required dependencies. `anndata` is also included in
+`[dev]` to ensure the full test suite runs in CI.
+- `CONTRIBUTING.md`: updated linting instructions from `flake8` to `ruff`, matching the
+actual tooling configured in `pyproject.toml`.
+- `README.md` **/** `README_PYPI.md`: added `pip install shesha-geometry[bio]` install
+instructions to the Installation section.
+
+
 
 ### Added
 
 - **GitHub issue templates** (`.github/ISSUE_TEMPLATE/`): bug report and feature request
-  templates for structured community contributions.
+templates for structured community contributions.
 - **GitHub PR template** (`.github/pull_request_template.md`): standardized pull request
-  checklist covering tests, formatting, and linting.
+checklist covering tests, formatting, and linting.
 
 ---
 
+
+
 ## [0.2.23] - 2026-06-17
+
+
 
 ### Added
 
-- **`discordance`** (`shesha.bio`): Identifies perturbations that deviate from the expected
-  stability-magnitude relationship. Supports three methods:
+- `discordance` (`shesha.bio`): Identifies perturbations that deviate from the expected
+stability-magnitude relationship. Supports three methods:
   - `"linear"` (default): OLS residual, sign-flipped and z-scored.
   - `"rank"`: rank(Mp) - rank(Sp), z-scored. Non-parametric and robust to outliers.
   - `"loess"`: LOWESS local regression residual, sign-flipped and z-scored. Captures
-    nonlinear magnitude-stability trends. Requires `statsmodels` (optional dependency).
-- **Optional dependency `loess`**: `pip install shesha-geometry[loess]` installs `statsmodels`
-  for LOESS-based discordance.
+  nonlinear magnitude-stability trends. Requires `statsmodels` (optional dependency).
+- **Optional dependency** `loess`: `pip install shesha-geometry[loess]` installs `statsmodels`
+for LOESS-based discordance.
 - Tests for all three discordance methods in `tests/test_split_half.py`.
 - Documentation for `discordance` in `docs/guide/bio.rst`.
 
 ---
 
+
+
 ## [0.2.22] - 2026-06-15
+
+
 
 ### Added
 
-- **`tutorials/crispr_split_half_tutorial.ipynb`**: End-to-end Colab tutorial for split-half
-  reproducibility on the Norman 2019 CRISPRa dataset. Covers preprocessing, computing
-  `split_half_reproducibility`, computing `magnitude_matched_comparison`, Spearman
-  correlation analysis, and a 3-panel figure (Sp vs reproducibility, Mp vs reproducibility,
-  magnitude-matched bar chart). Includes interpretation guide and quick-reference table.
+- `tutorials/crispr_split_half_tutorial.ipynb`: End-to-end Colab tutorial for split-half
+reproducibility on the Norman 2019 CRISPRa dataset. Covers preprocessing, computing
+`split_half_reproducibility`, computing `magnitude_matched_comparison`, Spearman
+correlation analysis, and a 3-panel figure (Sp vs reproducibility, Mp vs reproducibility,
+magnitude-matched bar chart). Includes interpretation guide and quick-reference table.
 
 ---
 
+
+
 ## [0.2.21] - 2026-06-14
+
+
 
 ### Added
 
-- **`split_half_reproducibility`** (`shesha.bio`): AnnData-compatible function that measures
-  per-perturbation effect-direction reproducibility via repeated 50/50 random cell splits.
-  For each perturbation, cells are split into two independent halves, a shift vector relative
-  to the control centroid is computed for each half, and the cosine similarity between the two
-  halves is averaged over `n_splits` (default 50). Returns a `pd.DataFrame` indexed by
-  perturbation with columns `split_half_cosine` and `n_cells`.
-- **`magnitude_matched_comparison`** (`shesha.bio`): Confound-control utility that bins
-  perturbations by effect magnitude, then within each bin compares mean split-half cosine
-  between the high-stability and low-stability halves. Returns a `pd.DataFrame` with per-bin
-  statistics including `difference`, `within_bin_rho`, and `within_bin_pvalue`. Controls for
-  the SNR confound where larger-effect perturbations may appear more reproducible.
-- **`_split_half_cosine`** (`shesha.bio`): Low-level numpy implementation of the split-half
-  cosine kernel, reusable independently of AnnData.
+- `split_half_reproducibility` (`shesha.bio`): AnnData-compatible function that measures
+per-perturbation effect-direction reproducibility via repeated 50/50 random cell splits.
+For each perturbation, cells are split into two independent halves, a shift vector relative
+to the control centroid is computed for each half, and the cosine similarity between the two
+halves is averaged over `n_splits` (default 50). Returns a `pd.DataFrame` indexed by
+perturbation with columns `split_half_cosine` and `n_cells`.
+- `magnitude_matched_comparison` (`shesha.bio`): Confound-control utility that bins
+perturbations by effect magnitude, then within each bin compares mean split-half cosine
+between the high-stability and low-stability halves. Returns a `pd.DataFrame` with per-bin
+statistics including `difference`, `within_bin_rho`, and `within_bin_pvalue`. Controls for
+the SNR confound where larger-effect perturbations may appear more reproducible.
+- `_split_half_cosine` (`shesha.bio`): Low-level numpy implementation of the split-half
+cosine kernel, reusable independently of AnnData.
 - `tests/test_split_half.py`: 20 pytest tests covering `_split_half_cosine`,
-  `split_half_reproducibility`, and `magnitude_matched_comparison` (signal recovery,
-  determinism, min-cells filtering, column validation, NaN handling, custom column names).
+`split_half_reproducibility`, and `magnitude_matched_comparison` (signal recovery,
+determinism, min-cells filtering, column validation, NaN handling, custom column names).
+
+
 
 ### Changed
 
 - `pyproject.toml`: added `pandas>=1.3` as an explicit dependency (previously a transitive
-  dependency via `anndata`; now required directly by `shesha.bio`).
+dependency via `anndata`; now required directly by `shesha.bio`).
 
 ---
 
+
+
 ## [0.2.20] - 2026-05-28
+
+
 
 ### Added
 
@@ -152,6 +250,8 @@ All notable changes to the `shesha` package will be documented in this file.
 - `shesha/_utils.py`: shared helpers `bootstrap_ci`, `bootstrap_ci_two_sample`, and `bootstrap_ci_bio` for single-matrix, paired two-sample, and independent two-population resampling.
 - `tests/test_bootstrap_ci.py`: tests for CI dict structure, backward compatibility, determinism, and coverage across core, bio, and sim.
 - Read the Docs user guide `docs/guide/bootstrap_ci.rst`; CI examples added to existing guides and quickstart.
+
+
 
 ### Changed
 
@@ -161,7 +261,11 @@ All notable changes to the `shesha` package will be documented in this file.
 
 ---
 
+
+
 ## [0.2.18] - 2026-05-26
+
+
 
 ### Changed
 
@@ -169,12 +273,18 @@ All notable changes to the `shesha` package will be documented in this file.
 
 ---
 
+
+
 ## [0.2.17] - 2026-05-25
+
+
 
 ### Changed
 
 - Simplified `README.md` and `README_PYPI.md`: removed inline API reference, variants, examples, and testing sections in favour of a link to the ReadTheDocs documentation site. Tutorials and citation blocks retained.
 - Updated logo reference in `README.md` to use the local `assets/shesha-logo.jpg` path; `README_PYPI.md` retains the absolute URL for PyPI rendering.
+
+
 
 ### Fixed
 
@@ -183,7 +293,10 @@ All notable changes to the `shesha` package will be documented in this file.
 ---
 
 
+
 ## [0.2.15] - 2026-04-15
+
+
 
 ### Added
 
@@ -194,26 +307,38 @@ All notable changes to the `shesha` package will be documented in this file.
 
 ---
 
+
+
 ## [0.2.14] - 2026-03-31
+
+
 
 ### Fixed
 
-- **`shesha/bio.py`**: Moved `anndata` import to the top of the module alongside other imports. Previously the `try/except ImportError` block was placed mid-file between function definitions, causing static analysis tools to misparse the following function's docstring as a floating duplicate string literal.
-- **`shesha/bio.py`**: Eliminated duplicate AnnData extraction logic in `compute_stability` and `compute_magnitude` by extracting two private helpers:
+- `shesha/bio.py`: Moved `anndata` import to the top of the module alongside other imports. Previously the `try/except ImportError` block was placed mid-file between function definitions, causing static analysis tools to misparse the following function's docstring as a floating duplicate string literal.
+- `shesha/bio.py`: Eliminated duplicate AnnData extraction logic in `compute_stability` and `compute_magnitude` by extracting two private helpers:
   - `_get_array(adata, mask, layer)` — extracts a dense numpy array from an AnnData slice, handling sparse matrices in one place
   - `_iter_perturbations(adata, perturbation_key, control_label, layer)` — generator yielding `(pert_name, X_ctrl, X_pert)` for each non-control perturbation
 
 ---
 
+
+
 ## [0.2.0] - 2026-03-20
+
 Added the `shesha.sim` similarity module (CKA, debiased CKA, Procrustes, RDM) and two new supervised metrics in `shesha.core` (`class_separation_ratio`, `lda_stability`). Extended `shesha.bio` perturbation stability with whitened and k-NN matched methods.
 
 ### Testing
+
 Expanded the test suite with four new test files covering all v0.2.0 features: `test_new_features.py` (supervised metrics and bio methods), `test_similarity.py` (full `shesha.sim` coverage), `test_anndata_integration.py` (AnnData workflows for all three stability methods), and `test_v020_features.py` (edge cases, error handling, and dispatch consistency). CI now runs across Python 3.8–3.12 on Ubuntu, macOS, and Windows via GitHub Actions, with a separate coverage-reporting job.
 
 ## [0.1.4] - 2026-02-09
 
+
+
 ### Added
+
+
 
 #### New Module: `shesha.sim`
 
@@ -221,98 +346,101 @@ A dedicated module for representational **similarity** metrics, complementing th
 
 **Similarity Metrics:**
 
-1. **`cka_linear(X, Y)`** - Standard Centered Kernel Alignment
-   - Linear kernel-based similarity metric
-   - Invariant to orthogonal transformations and isotropic scaling
-   - Fast and numerically stable
-   - Range: [0, 1], with 1.0 meaning identical structure
+1. `cka_linear(X, Y)` - Standard Centered Kernel Alignment
+  - Linear kernel-based similarity metric
+  - Invariant to orthogonal transformations and isotropic scaling
+  - Fast and numerically stable
+  - Range: [0, 1], with 1.0 meaning identical structure
+2. `cka_debiased(X, Y)` - Debiased Centered Kernel Alignment
+  - Unbiased estimator correcting for finite sample effects
+  - More accurate for small sample sizes
+  - Uses debiased HSIC estimator from Kornblith et al. (2019)
+  - Recommended for n < 100
+3. `cka(X, Y, debiased=False)` - Unified CKA interface
+  - Convenience function selecting between standard and debiased CKA
+  - Single entry point for CKA computation
+4. `procrustes_similarity(X, Y, center=True, scale=True)`
+  - Orthogonal Procrustes similarity
+  - Finds optimal rotation/reflection alignment
+  - More sensitive to outliers than CKA
+  - Returns 1 - disparity as similarity score
+5. `rdm_similarity(X, Y, metric='cosine', method='spearman')`
+  - RDM-based similarity using correlation of pairwise distances
+  - Same approach as RSA (Representational Similarity Analysis)
+  - Supports cosine, correlation, and euclidean distance metrics
+  - Supports Spearman (rank-based) and Pearson (linear) correlation
 
-2. **`cka_debiased(X, Y)`** - Debiased Centered Kernel Alignment
-   - Unbiased estimator correcting for finite sample effects
-   - More accurate for small sample sizes
-   - Uses debiased HSIC estimator from Kornblith et al. (2019)
-   - Recommended for n < 100
 
-3. **`cka(X, Y, debiased=False)`** - Unified CKA interface
-   - Convenience function selecting between standard and debiased CKA
-   - Single entry point for CKA computation
-
-4. **`procrustes_similarity(X, Y, center=True, scale=True)`**
-   - Orthogonal Procrustes similarity
-   - Finds optimal rotation/reflection alignment
-   - More sensitive to outliers than CKA
-   - Returns 1 - disparity as similarity score
-
-5. **`rdm_similarity(X, Y, metric='cosine', method='spearman')`**
-   - RDM-based similarity using correlation of pairwise distances
-   - Same approach as RSA (Representational Similarity Analysis)
-   - Supports cosine, correlation, and euclidean distance metrics
-   - Supports Spearman (rank-based) and Pearson (linear) correlation
 
 #### Core Module (`shesha.core`)
 
 **New Supervised Stability Metrics:**
 
-6. **`class_separation_ratio(X, y, n_bootstrap=50, subsample_frac=0.5, metric='euclidean', seed=None)`**
-   - Measures ratio of between-class to within-class distances
-   - Uses bootstrap subsampling for computational efficiency
-   - Related to Fisher's discriminant ratio but operates in distance space
-   - Higher values indicate better class separation
-   - Useful for transfer learning and model selection
+1. `class_separation_ratio(X, y, n_bootstrap=50, subsample_frac=0.5, metric='euclidean', seed=None)`
+  - Measures ratio of between-class to within-class distances
+  - Uses bootstrap subsampling for computational efficiency
+  - Related to Fisher's discriminant ratio but operates in distance space
+  - Higher values indicate better class separation
+  - Useful for transfer learning and model selection
+2. `lda_stability(X, y, n_bootstrap=50, subsample_frac=0.5, seed=None)`
+  - Measures consistency of linear discriminant direction under resampling
+  - Binary classification only (2 classes required)
+  - Returns absolute cosine similarity between full and bootstrap discriminant vectors
+  - Values near 1 indicate stable discriminant subspace
+  - Predicts transfer learning performance (ρ = 0.89-0.96 in paper)
+  - Low values suggest overfitting to source domain
 
-7. **`lda_stability(X, y, n_bootstrap=50, subsample_frac=0.5, seed=None)`**
-   - Measures consistency of linear discriminant direction under resampling
-   - Binary classification only (2 classes required)
-   - Returns absolute cosine similarity between full and bootstrap discriminant vectors
-   - Values near 1 indicate stable discriminant subspace
-   - Predicts transfer learning performance (ρ = 0.89-0.96 in paper)
-   - Low values suggest overfitting to source domain
+
 
 #### Bio Module (`shesha.bio`)
 
 **Enhanced Perturbation Stability Methods:**
 
-8. **`perturbation_stability_whitened(X_control, X_perturbed, regularization=1e-6, seed=None, max_samples=1000)`**
-   - Mahalanobis-scaled (whitened) perturbation stability
-   - Accounts for feature correlations and covariance structure
-   - More robust when features have different scales or are highly correlated
-   - Applies whitening transformation: W = V @ diag(1/sqrt(λ)) @ V.T
-   - Useful for reducing batch effect sensitivity
-
-9. **`perturbation_stability_knn(X_control, X_perturbed, k=50, metric='euclidean', seed=None, max_samples=1000)`**
-   - k-NN matched control perturbation stability
-   - Matches each perturbed cell to k nearest control cells
-   - Computes shift relative to local control centroid
-   - Reduces sensitivity to population heterogeneity
-   - Particularly useful when control population has multiple cell types/states
+1. `perturbation_stability_whitened(X_control, X_perturbed, regularization=1e-6, seed=None, max_samples=1000)`
+  - Mahalanobis-scaled (whitened) perturbation stability
+  - Accounts for feature correlations and covariance structure
+  - More robust when features have different scales or are highly correlated
+  - Applies whitening transformation: W = V @ diag(1/sqrt(λ)) @ V.T
+  - Useful for reducing batch effect sensitivity
+2. `perturbation_stability_knn(X_control, X_perturbed, k=50, metric='euclidean', seed=None, max_samples=1000)`
+  - k-NN matched control perturbation stability
+  - Matches each perturbed cell to k nearest control cells
+  - Computes shift relative to local control centroid
+  - Reduces sensitivity to population heterogeneity
+  - Particularly useful when control population has multiple cell types/states
 
 **AnnData Integration (Scanpy-compatible):**
 
-10. **`compute_stability_whitened(adata, perturbation_key, control_label='control', layer=None, ...)`**
-    - AnnData wrapper for whitened perturbation stability
+1. `compute_stability_whitened(adata, perturbation_key, control_label='control', layer=None, ...)`
+  - AnnData wrapper for whitened perturbation stability
+    - Compatible with scanpy workflows
+    - Supports sparse matrices and custom layers
+    - Returns dictionary of stability scores for all perturbations
+2. `compute_stability_knn(adata, perturbation_key, control_label='control', layer=None, k=50, ...)`
+  - AnnData wrapper for k-NN matched stability
     - Compatible with scanpy workflows
     - Supports sparse matrices and custom layers
     - Returns dictionary of stability scores for all perturbations
 
-11. **`compute_stability_knn(adata, perturbation_key, control_label='control', layer=None, k=50, ...)`**
-    - AnnData wrapper for k-NN matched stability
-    - Compatible with scanpy workflows
-    - Supports sparse matrices and custom layers
-    - Returns dictionary of stability scores for all perturbations
+
 
 ### Motivation
 
 From the paper: **Stability and similarity are empirically uncorrelated** (ρ ≈ 0.01) and measure fundamentally different properties:
+
 - **Similarity (extrinsic)**: How one representation aligns with another
 - **Stability (intrinsic)**: How robust a representation's internal geometry is
 
 Having both in a unified package enables researchers to:
+
 - Reproduce the ρ ≈ 0.01 finding
 - Compare stability vs. similarity for model selection
 - Identify models with high similarity but low stability (the "geometric tax")
 - Perform complete supervised stability analysis
 - Conduct robust biological perturbation analysis with better handling of heterogeneous populations and batch effects
 - Improve transfer learning prediction capabilities
+
+
 
 ### Technical Details
 
@@ -322,6 +450,8 @@ Having both in a unified package enables researchers to:
 - **Dependencies**: NumPy + SciPy only (no additional dependencies for core functionality)
 - All implementations ported from the paper's experiment code (drift/, distinction/, transfer_learning/, crispr/)
 
+
+
 ### References
 
 - Raju, P. C. (2026). "Geometric Stability: The Missing Axis of Representations." arXiv:2601.09173
@@ -330,7 +460,11 @@ Having both in a unified package enables researchers to:
 
 ---
 
+
+
 ## [0.1.32] - 2026-01-12
+
+
 
 ### Initial Release
 
@@ -339,3 +473,4 @@ Having both in a unified package enables researchers to:
 - Drift metrics: `rdm_similarity`, `rdm_drift`
 - Bio module: `perturbation_stability`, `perturbation_effect_size`
 - AnnData integration via `compute_stability`, `compute_magnitude`
+

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "shesha-geometry"
-version = "0.2.28"
+version = "0.2.29"
 description = "Self-consistency metrics for representational stability analysis"
 readme = "README_PYPI.md"
 license = "MIT"
@@ -49,6 +49,7 @@ classifiers = [
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
     "Topic :: Scientific/Engineering",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
     "Topic :: Scientific/Engineering :: Bio-Informatics",
@@ -78,6 +79,8 @@ dev = [
     "scikit-learn>=1.0",
     "statsmodels>=0.13",
     "packaging",
+    "build",
+    "twine",
 ]
 
 [project.urls]
@@ -96,4 +99,6 @@ target-version = ["py39", "py310", "py311", "py312"]
 
 [tool.ruff]
 line-length = 100
+
+[tool.ruff.lint]
 select = ["E", "F", "W", "I"]

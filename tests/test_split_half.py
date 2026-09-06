@@ -6,15 +6,16 @@ import pytest
 
 from shesha.bio import (
     _split_half_cosine,
-    split_half_reproducibility,
-    magnitude_matched_comparison,
     discordance,
+    magnitude_matched_comparison,
+    split_half_reproducibility,
 )
 
 
 def _has_statsmodels():
     try:
         import statsmodels  # noqa: F401
+
         return True
     except ImportError:
         return False
@@ -23,6 +24,7 @@ def _has_statsmodels():
 # ---------------------------------------------------------------------------
 # Fixtures
 # ---------------------------------------------------------------------------
+
 
 class MockAnnData:
     """Minimal AnnData stand-in for testing without anndata installed."""
@@ -48,11 +50,7 @@ def adata_simple():
     X_weak = rng.standard_normal((n_weak, d)) * 2
 
     X = np.vstack([X_ctrl, X_strong, X_weak])
-    labels = (
-        ["control"] * n_ctrl
-        + ["gene_strong"] * n_strong
-        + ["gene_weak"] * n_weak
-    )
+    labels = ["control"] * n_ctrl + ["gene_strong"] * n_strong + ["gene_weak"] * n_weak
     obs = pd.DataFrame({"perturbation": labels})
     return MockAnnData(X=X, obs=obs)
 
@@ -61,12 +59,14 @@ def adata_simple():
 def patch_anndata(monkeypatch):
     """Ensure bio.AnnData resolves to our mock class."""
     import shesha.bio as bio
+
     monkeypatch.setattr(bio, "AnnData", MockAnnData)
 
 
 # ---------------------------------------------------------------------------
 # _split_half_cosine
 # ---------------------------------------------------------------------------
+
 
 class TestSplitHalfCosine:
     def test_strong_signal_high_cosine(self):
@@ -117,6 +117,7 @@ class TestSplitHalfCosine:
 # split_half_reproducibility (AnnData-level)
 # ---------------------------------------------------------------------------
 
+
 class TestSplitHalfReproducibility:
     def test_returns_dataframe(self, adata_simple):
         result = split_half_reproducibility(
@@ -138,7 +139,10 @@ class TestSplitHalfReproducibility:
         result = split_half_reproducibility(
             adata_simple, perturbation_key="perturbation", control_label="control"
         )
-        assert result.loc["gene_strong", "split_half_cosine"] > result.loc["gene_weak", "split_half_cosine"]
+        assert (
+            result.loc["gene_strong", "split_half_cosine"]
+            > result.loc["gene_weak", "split_half_cosine"]
+        )
 
     def test_n_cells_correct(self, adata_simple):
         result = split_half_reproducibility(
@@ -164,12 +168,16 @@ class TestSplitHalfReproducibility:
 
     def test_deterministic(self, adata_simple):
         r1 = split_half_reproducibility(
-            adata_simple, perturbation_key="perturbation",
-            control_label="control", random_state=42,
+            adata_simple,
+            perturbation_key="perturbation",
+            control_label="control",
+            random_state=42,
         )
         r2 = split_half_reproducibility(
-            adata_simple, perturbation_key="perturbation",
-            control_label="control", random_state=42,
+            adata_simple,
+            perturbation_key="perturbation",
+            control_label="control",
+            random_state=42,
         )
         pd.testing.assert_frame_equal(r1, r2)
 
@@ -177,6 +185,7 @@ class TestSplitHalfReproducibility:
 # ---------------------------------------------------------------------------
 # magnitude_matched_comparison
 # ---------------------------------------------------------------------------
+
 
 class TestMagnitudeMatchedComparison:
     @pytest.fixture
@@ -195,9 +204,15 @@ class TestMagnitudeMatchedComparison:
     def test_correct_columns(self, repro_df):
         result = magnitude_matched_comparison(repro_df)
         expected_cols = {
-            "mag_bin", "n", "mag_min", "mag_max",
-            "high_coherence_mean", "low_coherence_mean",
-            "difference", "within_bin_rho", "within_bin_pvalue",
+            "mag_bin",
+            "n",
+            "mag_min",
+            "mag_max",
+            "high_coherence_mean",
+            "low_coherence_mean",
+            "difference",
+            "within_bin_rho",
+            "within_bin_pvalue",
         }
         assert set(result.columns) == expected_cols
 
@@ -222,25 +237,32 @@ class TestMagnitudeMatchedComparison:
     def test_custom_column_names(self):
         rng = np.random.default_rng(55)
         n = 100
-        df = pd.DataFrame({
-            "stability": rng.standard_normal(n),
-            "magnitude": np.abs(rng.standard_normal(n)) + 0.1,
-            "repro": rng.random(n),
-        })
+        df = pd.DataFrame(
+            {
+                "stability": rng.standard_normal(n),
+                "magnitude": np.abs(rng.standard_normal(n)) + 0.1,
+                "repro": rng.random(n),
+            }
+        )
         result = magnitude_matched_comparison(
-            df, coherence_col="stability", repro_col="repro",
-            magnitude_col="magnitude", n_bins=4,
+            df,
+            coherence_col="stability",
+            repro_col="repro",
+            magnitude_col="magnitude",
+            n_bins=4,
         )
         assert len(result) == 4
 
     def test_nan_handling(self):
         rng = np.random.default_rng(77)
         n = 100
-        df = pd.DataFrame({
-            "Sp": rng.standard_normal(n),
-            "Mp": np.abs(rng.standard_normal(n)) + 0.1,
-            "split_half_cosine": rng.random(n),
-        })
+        df = pd.DataFrame(
+            {
+                "Sp": rng.standard_normal(n),
+                "Mp": np.abs(rng.standard_normal(n)) + 0.1,
+                "split_half_cosine": rng.random(n),
+            }
+        )
         df.loc[0:5, "Sp"] = np.nan
         result = magnitude_matched_comparison(df)
         assert len(result) > 0
@@ -249,6 +271,7 @@ class TestMagnitudeMatchedComparison:
 # ---------------------------------------------------------------------------
 # discordance
 # ---------------------------------------------------------------------------
+
 
 class TestDiscordance:
     @pytest.fixture
@@ -283,17 +306,13 @@ class TestDiscordance:
         assert len(result) == len(base_df)
         assert abs(result.mean()) < 1e-10
 
-    @pytest.mark.skipif(
-        not _has_statsmodels(), reason="statsmodels not installed"
-    )
+    @pytest.mark.skipif(not _has_statsmodels(), reason="statsmodels not installed")
     def test_loess_method(self, base_df):
         result = discordance(base_df, method="loess", loess_frac=0.3)
         assert len(result) == len(base_df)
         assert abs(result.mean()) < 1e-8
 
-    @pytest.mark.skipif(
-        not _has_statsmodels(), reason="statsmodels not installed"
-    )
+    @pytest.mark.skipif(not _has_statsmodels(), reason="statsmodels not installed")
     def test_loess_frac_parameter(self, base_df):
         r1 = discordance(base_df, method="loess", loess_frac=0.2)
         r2 = discordance(base_df, method="loess", loess_frac=0.6)
@@ -301,16 +320,16 @@ class TestDiscordance:
 
     def test_methods_correlated_linear_rank(self, base_df):
         from scipy.stats import spearmanr
+
         d_lin = discordance(base_df, method="linear")
         d_rank = discordance(base_df, method="rank")
         rho_lr, _ = spearmanr(d_lin, d_rank)
         assert rho_lr > 0.7
 
-    @pytest.mark.skipif(
-        not _has_statsmodels(), reason="statsmodels not installed"
-    )
+    @pytest.mark.skipif(not _has_statsmodels(), reason="statsmodels not installed")
     def test_methods_correlated_linear_loess(self, base_df):
         from scipy.stats import spearmanr
+
         d_lin = discordance(base_df, method="linear")
         d_loess = discordance(base_df, method="loess")
         rho_ll, _ = spearmanr(d_lin, d_loess)
@@ -328,20 +347,24 @@ class TestDiscordance:
     def test_custom_columns(self):
         rng = np.random.default_rng(99)
         n = 50
-        df = pd.DataFrame({
-            "stability": rng.standard_normal(n),
-            "magnitude": np.abs(rng.standard_normal(n)) + 0.1,
-        })
+        df = pd.DataFrame(
+            {
+                "stability": rng.standard_normal(n),
+                "magnitude": np.abs(rng.standard_normal(n)) + 0.1,
+            }
+        )
         result = discordance(df, coherence_col="stability", magnitude_col="magnitude")
         assert len(result) == n
 
     def test_nan_handling(self):
         rng = np.random.default_rng(55)
         n = 100
-        df = pd.DataFrame({
-            "Sp": rng.standard_normal(n),
-            "Mp": np.abs(rng.standard_normal(n)) + 0.1,
-        })
+        df = pd.DataFrame(
+            {
+                "Sp": rng.standard_normal(n),
+                "Mp": np.abs(rng.standard_normal(n)) + 0.1,
+            }
+        )
         df.loc[0:5, "Sp"] = np.nan
         result = discordance(df)
         assert len(result) == n - 6  # NaN rows excluded

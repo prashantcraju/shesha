@@ -76,8 +76,10 @@ Examples across modules
 .. code-block:: python
 
    result = shesha.feature_split(X, n_splits=30, n_bootstrap_ci=1000, seed=320)
-   result = shesha.sample_split(X, n_splits=30, n_bootstrap_ci=1000, seed=320)
-   result = shesha.anchor_stability(X, n_bootstrap_ci=1000, seed=320)
+
+``sample_split`` and ``anchor_stability`` also accept ``n_bootstrap_ci``, but
+those estimators are not scientifically valid. Confidence intervals on them
+should not be used for inference. See :doc:`caveats`.
 
 **Core (supervised)**
 
@@ -124,7 +126,7 @@ Choosing ``n_bootstrap_ci``
 - **Publication-quality**: 1000–10000 resamples
 - **Computational cost**: scales linearly with ``n_bootstrap_ci``. Each resample
   runs the full metric computation, so expensive metrics (e.g.
-  ``anchor_stability`` on large data) will take proportionally longer.
+  large-data estimators) will take proportionally longer.
 
 Resampling strategy
 -------------------

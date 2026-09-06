@@ -2,8 +2,9 @@
 Internal utilities for bootstrap confidence intervals.
 """
 
+from typing import Callable, Optional
+
 import numpy as np
-from typing import Optional, Union, Callable
 
 
 def bootstrap_ci(

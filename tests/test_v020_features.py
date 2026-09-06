@@ -8,12 +8,14 @@ test_similarity.py, and test_anndata_integration.py.
 
 import numpy as np
 import pytest
+
 import shesha
-import shesha.sim as sim
 import shesha.bio as bio
+import shesha.sim as sim
 
 try:
     from sklearn.neighbors import NearestNeighbors  # noqa: F401
+
     SKLEARN_AVAILABLE = True
 except ImportError:
     SKLEARN_AVAILABLE = False
@@ -28,14 +30,17 @@ requires_sklearn = pytest.mark.skipif(
 # Fixtures
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture
 def binary_separated():
     """Two well-separated Gaussian blobs."""
     rng = np.random.default_rng(320)
-    X = np.vstack([
-        rng.standard_normal((100, 20)),
-        rng.standard_normal((100, 20)) + 4,
-    ])
+    X = np.vstack(
+        [
+            rng.standard_normal((100, 20)),
+            rng.standard_normal((100, 20)) + 4,
+        ]
+    )
     y = np.array([0] * 100 + [1] * 100)
     return X, y
 
@@ -44,10 +49,12 @@ def binary_separated():
 def binary_overlapping():
     """Two barely-separated Gaussian blobs (noisy)."""
     rng = np.random.default_rng(320)
-    X = np.vstack([
-        rng.standard_normal((100, 20)),
-        rng.standard_normal((100, 20)) + 0.3,
-    ])
+    X = np.vstack(
+        [
+            rng.standard_normal((100, 20)),
+            rng.standard_normal((100, 20)) + 0.3,
+        ]
+    )
     y = np.array([0] * 100 + [1] * 100)
     return X, y
 
@@ -75,6 +82,7 @@ def ctrl_pert_random():
 # class_separation_ratio
 # ===========================================================================
 
+
 class TestClassSeparationRatio:
 
     def test_well_separated_high(self, binary_separated):
@@ -96,11 +104,13 @@ class TestClassSeparationRatio:
     def test_multiclass(self):
         """Should work with more than 2 classes."""
         rng = np.random.default_rng(320)
-        X = np.vstack([
-            rng.standard_normal((60, 10)),
-            rng.standard_normal((60, 10)) + 4,
-            rng.standard_normal((60, 10)) + 8,
-        ])
+        X = np.vstack(
+            [
+                rng.standard_normal((60, 10)),
+                rng.standard_normal((60, 10)) + 4,
+                rng.standard_normal((60, 10)) + 8,
+            ]
+        )
         y = np.array([0] * 60 + [1] * 60 + [2] * 60)
         ratio = shesha.class_separation_ratio(X, y, n_bootstrap=15, seed=320)
         assert isinstance(ratio, float)
@@ -110,9 +120,7 @@ class TestClassSeparationRatio:
     def test_cosine_metric(self, binary_separated):
         """Cosine metric variant should also return a valid ratio > 1."""
         X, y = binary_separated
-        ratio = shesha.class_separation_ratio(
-            X, y, metric="cosine", n_bootstrap=15, seed=320
-        )
+        ratio = shesha.class_separation_ratio(X, y, metric="cosine", n_bootstrap=15, seed=320)
         assert isinstance(ratio, float)
         assert not np.isnan(ratio)
         assert ratio > 0.0
@@ -144,6 +152,7 @@ class TestClassSeparationRatio:
 # lda_stability
 # ===========================================================================
 
+
 class TestLdaStability:
 
     def test_stable_high(self, binary_separated):
@@ -158,10 +167,12 @@ class TestLdaStability:
     def test_unstable_lower(self, binary_overlapping):
         """Barely-separated data should yield lower stability than clear separation."""
         rng = np.random.default_rng(320)
-        X_sep = np.vstack([
-            rng.standard_normal((100, 20)),
-            rng.standard_normal((100, 20)) + 6,
-        ])
+        X_sep = np.vstack(
+            [
+                rng.standard_normal((100, 20)),
+                rng.standard_normal((100, 20)) + 6,
+            ]
+        )
         y = np.array([0] * 100 + [1] * 100)
 
         X_ov, _ = binary_overlapping
@@ -194,6 +205,7 @@ class TestLdaStability:
 # ===========================================================================
 # perturbation_coherence – unified method dispatch
 # ===========================================================================
+
 
 class TestPerturbationCoherenceMethodDispatch:
     """
@@ -263,9 +275,9 @@ class TestPerturbationCoherenceMethodDispatch:
             s_rand = bio.perturbation_coherence(
                 X_ctrl, X_pert_rand, method=method, k=30, seed=320, max_samples=150
             )
-            assert s_coh > s_rand, (
-                f"method='{method}': coherent ({s_coh:.3f}) not > random ({s_rand:.3f})"
-            )
+            assert (
+                s_coh > s_rand
+            ), f"method='{method}': coherent ({s_coh:.3f}) not > random ({s_rand:.3f})"
 
     def test_too_few_perturbed_returns_nan(self):
         """Fewer than 5 perturbed cells should return NaN."""
@@ -279,6 +291,7 @@ class TestPerturbationCoherenceMethodDispatch:
 # ===========================================================================
 # shesha.sim – CKA edge cases
 # ===========================================================================
+
 
 class TestCkaEdgeCases:
 
@@ -329,6 +342,7 @@ class TestCkaEdgeCases:
 # shesha.sim – Procrustes edge cases
 # ===========================================================================
 
+
 class TestProcrustesEdgeCases:
 
     def test_nan_input_returns_nan(self):
@@ -348,7 +362,7 @@ class TestProcrustesEdgeCases:
         assert np.isnan(result)
 
     def test_shape_mismatch_returns_nan(self):
-        """Procrustes with mismatched feature dims should return NaN (ValueError caught internally)."""
+        """Procrustes with mismatched feature dims should return NaN."""
         X = np.random.randn(50, 20)
         Y = np.random.randn(50, 15)
         result = sim.procrustes_similarity(X, Y)
@@ -367,6 +381,7 @@ class TestProcrustesEdgeCases:
 # ===========================================================================
 # shesha.sim – RDM similarity edge cases
 # ===========================================================================
+
 
 class TestRdmSimilarityEdgeCases:
 
@@ -396,6 +411,7 @@ class TestRdmSimilarityEdgeCases:
 # shesha.sim module accessibility
 # ===========================================================================
 
+
 class TestSimModuleAccess:
 
     def test_sim_accessible_via_shesha(self):
@@ -423,7 +439,8 @@ class TestSimModuleAccess:
 
     def test_version_is_valid_semver(self):
         """Package version should be a valid semantic version string."""
-        from packaging.version import Version, InvalidVersion
+        from packaging.version import InvalidVersion, Version
+
         try:
             Version(shesha.__version__)
         except InvalidVersion:

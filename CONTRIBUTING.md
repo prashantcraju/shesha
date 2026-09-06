@@ -103,4 +103,19 @@ git push origin feature/your-feature-name
 6. **Submit a Pull Request (PR)** against the `main` branch of the upstream `Shesha` repository.
 
 7. **Review:** A maintainer will review your code. We may request changes to ensure performance scaling and API consistency before merging.
+
+## Releasing
+
+Version is single-sourced from `pyproject.toml` (`shesha.__version__` and the Sphinx `release` read it).
+
+1. Land the release changes on `main`, including a dated `CHANGELOG.md` section.
+2. Confirm CI is green (tests, lint, and the built-wheel job).
+3. Create a signed tag matching the version, then push it:
+
+```bash
+git tag -s v0.2.29 -m "shesha-geometry 0.2.29"
+git push origin v0.2.29
+```
+
+4. The `Publish` workflow builds the sdist/wheel, runs `twine check`, publishes to PyPI via Trusted Publishing, and opens a GitHub Release. Configure the PyPI trusted publisher for this repository (environment name `pypi`) before the first automated upload.
  
