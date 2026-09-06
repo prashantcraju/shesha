@@ -8,9 +8,13 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -22,6 +26,42 @@ jobs:
           python -m pip install --upgrade pip
           pip install build twine
 
+      - name: Verify signed tag is on main
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG_TYPE="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$GITHUB_REF_NAME" --jq '.object.type')"
+          test "$TAG_TYPE" = "tag" || {
+            echo "Release tags must be annotated and signed; got $TAG_TYPE"
+            exit 1
+          }
+          TAG_SHA="$(gh api "repos/$GITHUB_REPOSITORY/git/ref/tags/$GITHUB_REF_NAME" --jq '.object.sha')"
+          TAG_VERIFIED="$(gh api "repos/$GITHUB_REPOSITORY/git/tags/$TAG_SHA" --jq '.verification.verified')"
+          test "$TAG_VERIFIED" = "true" || {
+            echo "GitHub did not verify the release tag signature"
+            exit 1
+          }
+          TAG_COMMIT="$(git rev-list -n 1 "$GITHUB_REF_NAME")"
+          git fetch origin main:refs/remotes/origin/main
+          git merge-base --is-ancestor "$TAG_COMMIT" origin/main || {
+            echo "Release tag must point to a commit on main"
+            exit 1
+          }
+
+      - name: Verify tag matches package version
+        run: |
+          PACKAGE_VERSION="$(python -c 'import tomllib; print(tomllib.load(open("pyproject.toml", "rb"))["project"]["version"])')"
+          CITATION_VERSION="$(awk '$1 == "version:" {print $2; exit}' CITATION.cff | tr -d "\"'")"
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          test "$TAG_VERSION" = "$PACKAGE_VERSION" || {
+            echo "Tag version $TAG_VERSION does not match package version $PACKAGE_VERSION"
+            exit 1
+          }
+          test "$CITATION_VERSION" = "$PACKAGE_VERSION" || {
+            echo "CITATION.cff version $CITATION_VERSION does not match package version $PACKAGE_VERSION"
+            exit 1
+          }
+
       - name: Build and check
         run: |
           python -m build
@@ -29,8 +69,11 @@ jobs:
 
       - name: Install wheel and smoke-test
         run: |
-          python -m pip install dist/*.whl
-          python -c "import shesha; print(shesha.__version__)"
+          WHEEL_PATH="$(python -c 'import glob, pathlib; print(pathlib.Path(glob.glob("dist/*.whl")[0]).resolve())')"
+          SMOKE_DIR="$(mktemp -d)"
+          cd "$SMOKE_DIR"
+          python -m pip install "$WHEEL_PATH"
+          python -c "import pathlib, shesha; path = pathlib.Path(shesha.__file__).resolve(); print(shesha.__version__, path); assert 'site-packages' in str(path)"
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4

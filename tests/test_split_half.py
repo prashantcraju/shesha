@@ -6,10 +6,17 @@ import pytest
 
 from shesha.bio import (
     _split_half_cosine,
+    _stable_label_seed,
     discordance,
     magnitude_matched_comparison,
     split_half_reproducibility,
 )
+
+
+def test_stable_label_seed_has_known_value():
+    """Per-label seeds must not depend on Python's randomized hash seed."""
+    assert _stable_label_seed("gene_strong", 42) == 30624
+    assert _stable_label_seed(7, 42) == 89675
 
 
 def _has_statsmodels():

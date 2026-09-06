@@ -13,6 +13,7 @@ def bootstrap_ci(
     ci: float,
     bootstrap_seed: Optional[int],
     *args,
+    skip_value_errors: bool = False,
     **kwargs,
 ) -> dict:
     """
@@ -38,6 +39,10 @@ def bootstrap_ci(
     **kwargs
         Additional keyword arguments passed through to func unchanged.
         If 'seed' is present, it is passed through to func for each iteration.
+    skip_value_errors : bool, default=False
+        Skip resamples that become invalid (for example, a class with fewer
+        than two observations). Public inputs and configuration must be
+        validated before calling this helper.
 
     Returns
     -------
@@ -51,7 +56,12 @@ def bootstrap_ci(
     for _ in range(n_bootstrap_ci):
         idx = rng.choice(n_samples, n_samples, replace=True)
         resampled_args = tuple(a[idx] for a in args)
-        score = func(*resampled_args, **kwargs)
+        try:
+            score = func(*resampled_args, **kwargs)
+        except ValueError:
+            if not skip_value_errors:
+                raise
+            continue
         if np.isfinite(score):
             scores.append(score)
 

@@ -1,0 +1,6 @@
+include LICENSE
+include CITATION.cff
+include CHANGELOG.md
+include CONTRIBUTING.md
+include README_PYPI.md
+recursive-include docs *.rst *.py *.txt

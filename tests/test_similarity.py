@@ -113,6 +113,7 @@ def test_procrustes_basic():
 
     assert isinstance(proc_sim, float)
     assert 0 <= proc_sim <= 1 or np.isnan(proc_sim)
+    assert proc_sim < 0.8
 
     print(f"[PASS] Procrustes basic: {proc_sim:.3f}")
 
@@ -146,15 +147,22 @@ def test_procrustes_self_similarity():
     print(f"[PASS] Procrustes self-similarity: {proc_sim:.6f}")
 
 
+def test_procrustes_rotation_without_scaling():
+    """Energy normalization keeps unscaled perfect rotations at one."""
+    rng = np.random.default_rng(9)
+    X = rng.standard_normal((80, 20)) * 3.0
+    Q = np.linalg.qr(rng.standard_normal((20, 20)))[0]
+    assert sim.procrustes_similarity(X, X @ Q, scale=False) > 0.99
+
+
 def test_procrustes_dimension_mismatch():
-    """Test that Procrustes returns NaN for dimension mismatch."""
+    """Test that Procrustes rejects dimension mismatch."""
     X = np.random.randn(100, 50)
     Y = np.random.randn(100, 30)  # Different feature dimensions
 
-    proc_sim = sim.procrustes_similarity(X, Y)
-
-    assert np.isnan(proc_sim)
-    print("[PASS] Procrustes dimension mismatch returns NaN")
+    with pytest.raises(ValueError, match="same shape"):
+        sim.procrustes_similarity(X, Y)
+    print("[PASS] Procrustes dimension mismatch raises ValueError")
 
 
 def test_rdm_similarity_basic():
