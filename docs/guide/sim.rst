@@ -22,8 +22,9 @@ Procrustes similarity
 ---------------------
 
 :func:`shesha.sim.procrustes_similarity` finds the best orthogonal alignment between
-two representations and returns the residual similarity. More sensitive to outliers
-than CKA (~6× more false alarms in stable regimes).
+two representations and returns one minus the squared residual normalized by
+their total energy. More sensitive to outliers than CKA (~6× more false alarms
+in stable regimes).
 
 .. code-block:: python
 

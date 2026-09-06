@@ -51,10 +51,16 @@ Undefined distances
 -------------------
 
 Cosine and correlation distances are undefined for zero or constant
-vectors. In 0.2.29 the default ``nan_policy='replace'`` still fills those
-entries with ``1.0`` so existing pipelines keep their numbers. That
-replacement can invent structure that was not present in the data.
+vectors. In 0.2.29 the consistent RDM default ``nan_policy='replace'`` fills
+those entries with ``1.0``. Behavior is unchanged when all computed distances
+are finite, but earlier undefined-distance behavior changes in APIs that
+previously propagated NaN or returned zero. Replacement can invent structure
+that was not present in the data.
 
 When a replacement actually occurs, Shesha emits a :class:`FutureWarning`.
 The default will change to ``nan_policy='raise'`` in 0.3.0. Prefer
 ``raise``, ``omit``, or ``propagate`` now if you want the safer behavior.
+
+``propagate`` makes an estimator undefined if any required distance is
+undefined. ``compute_rdm`` cannot omit individual distances while retaining
+valid condensed-RDM indexing, so it raises if ``omit`` would remove entries.

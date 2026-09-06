@@ -80,10 +80,34 @@ jobs:
       run: |
         python -m build
         python -m twine check dist/*
-        python -m pip install dist/*.whl
+        WHEEL_PATH="$(python -c 'import glob, pathlib; print(pathlib.Path(glob.glob("dist/*.whl")[0]).resolve())')"
+        TEST_DIR="$(mktemp -d)"
+        cp -R tests "$TEST_DIR/tests"
+        cd "$TEST_DIR"
+        python -m pip install "$WHEEL_PATH"
         python -m pip install pytest anndata scikit-learn statsmodels packaging
-        python -c "import shesha; print(shesha.__version__)"
+        python -c "import pathlib, shesha; path = pathlib.Path(shesha.__file__).resolve(); print(shesha.__version__, path); assert 'site-packages' in str(path)"
         pytest tests/ -v --tb=short
+
+  docs:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Python 3.11
+      uses: actions/setup-python@v5
+      with:
+        python-version: '3.11'
+
+    - name: Install documentation dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r docs/requirements.txt
+        pip install .
+
+    - name: Build documentation
+      run: sphinx-build -W --keep-going -b html docs docs/_build/html
 
   test-with-coverage:
     runs-on: ubuntu-latest
@@ -105,6 +129,9 @@ jobs:
     - name: Run tests with coverage
       run: |
         pytest tests/ --cov=shesha --cov-report=xml --cov-report=term
+
+    - name: Run deterministic similarity example
+      run: python examples/similarity_comparison.py
     
     - name: Upload coverage to Codecov
       uses: codecov/codecov-action@v5

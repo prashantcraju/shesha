@@ -345,28 +345,28 @@ class TestCkaEdgeCases:
 
 class TestProcrustesEdgeCases:
 
-    def test_nan_input_returns_nan(self):
-        """NaN values in input should produce NaN output."""
+    def test_nan_input_raises(self):
+        """NaN values are invalid input."""
         X = np.random.randn(50, 10)
         Y = np.random.randn(50, 10)
         Y[5, 3] = np.nan
-        result = sim.procrustes_similarity(X, Y)
-        assert np.isnan(result)
+        with pytest.raises(ValueError, match="finite"):
+            sim.procrustes_similarity(X, Y)
 
-    def test_inf_input_returns_nan(self):
-        """Inf values in input should produce NaN output."""
+    def test_inf_input_raises(self):
+        """Infinite values are invalid input."""
         X = np.random.randn(50, 10)
         Y = np.random.randn(50, 10)
         Y[0, 0] = np.inf
-        result = sim.procrustes_similarity(X, Y)
-        assert np.isnan(result)
+        with pytest.raises(ValueError, match="finite"):
+            sim.procrustes_similarity(X, Y)
 
-    def test_shape_mismatch_returns_nan(self):
-        """Procrustes with mismatched feature dims should return NaN."""
+    def test_shape_mismatch_raises(self):
+        """Procrustes requires matching feature dimensions."""
         X = np.random.randn(50, 20)
         Y = np.random.randn(50, 15)
-        result = sim.procrustes_similarity(X, Y)
-        assert np.isnan(result)
+        with pytest.raises(ValueError, match="same shape"):
+            sim.procrustes_similarity(X, Y)
 
     def test_no_center_no_scale(self):
         """Procrustes with center=False, scale=False should still return float in [0,1]."""

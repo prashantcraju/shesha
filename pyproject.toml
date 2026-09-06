@@ -92,6 +92,10 @@ Issues = "https://github.com/prashantcraju/shesha/issues"
 
 [tool.setuptools.packages.find]
 where = ["."]
+include = ["shesha*"]
+
+[tool.setuptools.package-data]
+shesha = ["py.typed"]
 
 [tool.black]
 line-length = 100

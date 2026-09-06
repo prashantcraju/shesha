@@ -1,10 +1,11 @@
 Bootstrap Confidence Intervals
 ==============================
 
-Every public metric in Shesha supports an optional **outer bootstrap** for
-computing confidence intervals on the point estimate. Instead of returning a
-single float, the function returns a dictionary with the mean, lower/upper CI
-bounds, standard deviation, and metadata.
+Public metric functions that expose an ``n_bootstrap_ci`` parameter support an
+optional **outer bootstrap** for computing confidence intervals on the point
+estimate. Instead of returning a single float, those functions return a
+dictionary with the mean, lower/upper CI bounds, standard deviation, and
+metadata.
 
 How it works
 ------------
@@ -22,7 +23,7 @@ Usage
 -----
 
 Pass ``n_bootstrap_ci`` (number of resamples) and optionally ``ci`` (confidence
-level, default 0.95) to any metric function:
+level, default 0.95) to one of the functions listed below:
 
 .. code-block:: python
 
@@ -105,6 +106,11 @@ should not be used for inference. See :doc:`caveats`.
 
    result = perturbation_coherence(X_ctrl, X_pert, n_bootstrap_ci=1000, seed=320)
    result = perturbation_effect_size(X_ctrl, X_pert, n_bootstrap_ci=1000, seed=320)
+
+The convenience wrappers ``perturbation_coherence_whitened`` and
+``perturbation_coherence_knn`` and the AnnData analysis functions do not expose
+outer-bootstrap parameters. Call ``perturbation_coherence`` directly for
+whitened or k-NN coherence CIs.
 
 **Sim (similarity metrics)**
 

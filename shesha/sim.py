@@ -79,7 +79,7 @@ def cka_linear(
     Examples
     --------
     >>> import numpy as np
-    >>> from shesha.similarity import cka_linear
+    >>> from shesha.sim import cka_linear
     >>>
     >>> # Two representations of the same data
     >>> X = np.random.randn(100, 50)
@@ -177,14 +177,14 @@ def cka_debiased(
     Examples
     --------
     >>> import numpy as np
-    >>> from shesha.similarity import cka_debiased
+    >>> from shesha.sim import cka_debiased
     >>>
     >>> # For small sample sizes, debiased version is more accurate
     >>> X = np.random.randn(50, 20)
     >>> Y = np.random.randn(50, 15)
     >>>
     >>> # Compare standard vs debiased
-    >>> from shesha.similarity import cka_linear
+    >>> from shesha.sim import cka_linear
     >>> std_cka = cka_linear(X, Y)
     >>> debiased_cka = cka_debiased(X, Y)
     >>>
@@ -321,7 +321,7 @@ def cka(
 
     Examples
     --------
-    >>> from shesha.similarity import cka
+    >>> from shesha.sim import cka
     >>>
     >>> X = np.random.randn(100, 50)
     >>> Y = np.random.randn(100, 30)
@@ -351,16 +351,12 @@ def cka(
 # =============================================================================
 
 
-def _validate_procrustes_inputs(X: np.ndarray, Y: np.ndarray) -> Optional[float]:
-    """Return np.nan if inputs are invalid, else None (meaning inputs are ok)."""
+def _validate_procrustes_inputs(X: np.ndarray, Y: np.ndarray) -> Optional[str]:
+    """Return ``"degenerate"`` for constant features, otherwise ``None``."""
     if X.shape != Y.shape:
         raise ValueError(
             f"X and Y must have same shape for Procrustes: " f"X is {X.shape}, Y is {Y.shape}"
         )
-    if np.any(np.isnan(X)) or np.any(np.isnan(Y)):
-        return np.nan
-    if np.any(np.isinf(X)) or np.any(np.isinf(Y)):
-        return np.nan
     X_std = X.std(axis=0)
     Y_std = Y.std(axis=0)
     if np.any(X_std < 1e-12) or np.any(Y_std < 1e-12):
@@ -400,9 +396,10 @@ def procrustes_similarity(
     """
     Procrustes similarity between two representations.
 
-    Finds the optimal orthogonal transformation that aligns Y to X and
-    returns the similarity (1 - disparity). Unlike CKA, Procrustes attempts
-    to directly align the representations in their original spaces.
+    Finds the optimal orthogonal transformation that aligns Y to X. Similarity
+    is one minus the squared alignment residual divided by the total energy of
+    both representations. Unlike CKA, Procrustes attempts to directly align
+    the representations in their original spaces.
 
     Parameters
     ----------
@@ -433,7 +430,7 @@ def procrustes_similarity(
     Examples
     --------
     >>> import numpy as np
-    >>> from shesha.similarity import procrustes_similarity
+    >>> from shesha.sim import procrustes_similarity
     >>>
     >>> # Two representations that differ by a rotation
     >>> X = np.random.randn(100, 50)
@@ -449,51 +446,51 @@ def procrustes_similarity(
     be both an advantage (detects small changes) and disadvantage (more false
     alarms). The paper shows CKA is often preferred for representation analysis.
 
-    If dimensions don't match, returns NaN. Unlike CKA, Procrustes requires
-    representations to live in the same dimensional space.
+    Unlike CKA, Procrustes requires representations to live in the same
+    dimensional space. Invalid shape or non-finite inputs raise ``ValueError``;
+    valid but degenerate inputs may return NaN.
 
     References
     ----------
     Schönemann, P. H. (1966). A generalized solution of the orthogonal
     Procrustes problem. Psychometrika, 31(1), 1-10.
     """
+    validate_positive_int(n_bootstrap_ci, "n_bootstrap_ci", allow_none=True)
+    validate_ci(ci)
+    X = as_2d_array(X, "X")
+    Y = as_2d_array(Y, "Y")
+    if _validate_procrustes_inputs(X, Y) == "degenerate":
+        return np.nan
+
     if n_bootstrap_ci is not None:
         return bootstrap_ci_two_sample(
             procrustes_similarity,
             n_bootstrap_ci,
             ci,
             seed,
-            np.asarray(X, dtype=np.float64),
-            np.asarray(Y, dtype=np.float64),
+            X,
+            Y,
             center=center,
             scale=scale,
         )
     try:
-        X = np.asarray(X, dtype=np.float64)
-        Y = np.asarray(Y, dtype=np.float64)
-
-        status = _validate_procrustes_inputs(X, Y)
-        if status == "degenerate":
-            rng = np.random.default_rng(320)
-            X = X + rng.normal(0, 1e-8, X.shape)
-            Y = Y + rng.normal(0, 1e-8, Y.shape)
-        elif status is not None:
-            return status  # np.nan
-
         result = _preprocess_procrustes(X, Y, center, scale)
         if result is None:
             return np.nan
         X_scaled, Y_scaled = result
 
-        R, _ = orthogonal_procrustes(X_scaled, Y_scaled)
-        disparity = np.mean((X_scaled - Y_scaled @ R) ** 2)
-        similarity = 1.0 - min(disparity / 2.0, 1.0)
+        R, _ = orthogonal_procrustes(Y_scaled, X_scaled)
+        residual_sq = float(np.sum((X_scaled - Y_scaled @ R) ** 2))
+        total_energy = float(np.sum(X_scaled**2) + np.sum(Y_scaled**2))
+        if total_energy < EPS:
+            return np.nan
+        similarity = 1.0 - residual_sq / total_energy
 
         if not np.isfinite(similarity):
             return np.nan
         return float(np.clip(similarity, 0.0, 1.0))
 
-    except (ValueError, np.linalg.LinAlgError):
+    except np.linalg.LinAlgError:
         return np.nan
 
 
@@ -552,7 +549,7 @@ def rdm_similarity(
     Examples
     --------
     >>> import numpy as np
-    >>> from shesha.similarity import rdm_similarity
+    >>> from shesha.sim import rdm_similarity
     >>>
     >>> X = np.random.randn(100, 50)
     >>> Y = np.random.randn(100, 30)
@@ -579,6 +576,9 @@ def rdm_similarity(
     """
     validate_positive_int(n_bootstrap_ci, "n_bootstrap_ci", allow_none=True)
     validate_ci(ci)
+    X = as_2d_array(X, "X")
+    Y = as_2d_array(Y, "Y")
+    validate_paired_samples(X, Y)
 
     if n_bootstrap_ci is not None:
         return bootstrap_ci_two_sample(
@@ -586,8 +586,8 @@ def rdm_similarity(
             n_bootstrap_ci,
             ci,
             seed,
-            as_2d_array(X, "X"),
-            as_2d_array(Y, "Y"),
+            X,
+            Y,
             metric=metric,
             method=method,
             nan_policy=nan_policy,

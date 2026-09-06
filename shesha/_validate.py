@@ -47,12 +47,26 @@ def as_label_array(y, n_samples: int, name: str = "y") -> np.ndarray:
     """Convert labels to a 1-D array whose length matches ``n_samples``."""
     labels = np.asarray(y)
     if labels.ndim != 1:
-        labels = np.ravel(labels)
+        raise ValueError(f"{name} must be a 1-dimensional array, got shape {labels.shape}")
     if labels.shape[0] != n_samples:
         raise ValueError(
             f"{name} length ({labels.shape[0]}) must match number of samples ({n_samples})"
         )
     return labels
+
+
+def validate_class_counts(y: np.ndarray, minimum: int = 2) -> None:
+    """Require at least ``minimum`` observations in every represented class."""
+    classes, counts = np.unique(y, return_counts=True)
+    too_small = classes[counts < minimum]
+    if too_small.size:
+        details = ", ".join(
+            f"{label!r} ({int(count)})"
+            for label, count in zip(classes[counts < minimum], counts[counts < minimum])
+        )
+        raise ValueError(
+            f"Each class must contain at least {minimum} observations; too small: {details}"
+        )
 
 
 def validate_paired_samples(
@@ -88,19 +102,45 @@ def validate_positive_int(
         raise ValueError(f"{name} must be an integer >= {minimum}, got {value!r}")
 
 
+def validate_positive_float(value: float, name: str, *, allow_zero: bool = False) -> None:
+    """Require a finite positive numeric value."""
+    if isinstance(value, (bool, np.bool_)):
+        raise ValueError(f"{name} must be a finite positive number, got {value!r}")
+    try:
+        numeric = float(value)
+    except (TypeError, ValueError):
+        raise ValueError(f"{name} must be a finite positive number, got {value!r}") from None
+    valid = np.isfinite(numeric) and (numeric >= 0.0 if allow_zero else numeric > 0.0)
+    if not valid:
+        qualifier = "non-negative" if allow_zero else "positive"
+        raise ValueError(f"{name} must be a finite {qualifier} number, got {value!r}")
+
+
 def validate_fraction(value: float, name: str, *, open_low: bool = True) -> None:
+    if isinstance(value, (bool, np.bool_)):
+        raise ValueError(f"{name} must be numeric, got {value!r}")
+    try:
+        numeric = float(value)
+    except (TypeError, ValueError):
+        raise ValueError(f"{name} must be numeric, got {value!r}") from None
     if open_low:
-        ok = 0.0 < float(value) <= 1.0
+        ok = 0.0 < numeric <= 1.0
         interval = "(0, 1]"
     else:
-        ok = 0.0 <= float(value) <= 1.0
+        ok = 0.0 <= numeric <= 1.0
         interval = "[0, 1]"
     if not ok:
         raise ValueError(f"{name} must be in {interval}, got {value!r}")
 
 
 def validate_ci(ci: float) -> None:
-    if not (0.0 < float(ci) < 1.0):
+    if isinstance(ci, (bool, np.bool_)):
+        raise ValueError(f"ci must be in (0, 1), got {ci!r}")
+    try:
+        numeric = float(ci)
+    except (TypeError, ValueError):
+        raise ValueError(f"ci must be in (0, 1), got {ci!r}") from None
+    if not (0.0 < numeric < 1.0):
         raise ValueError(f"ci must be in (0, 1), got {ci!r}")
 
 
@@ -119,9 +159,9 @@ def apply_nan_policy(
     Apply ``nan_policy`` to one or more aligned condensed distance arrays.
 
     Returns the processed arrays. For ``omit``, corresponding undefined
-    entries are dropped from every array. Returns ``None`` only when
-    ``propagate`` is requested and a caller-level NaN result is preferred
-    because every entry is undefined.
+    entries are dropped from every array. Returns ``None`` when ``propagate``
+    is requested and any entry is undefined, signalling that the caller's
+    entire result must be NaN.
     """
     validate_nan_policy(nan_policy)
     processed = [np.asarray(array, dtype=np.float64) for array in arrays]
@@ -155,9 +195,7 @@ def apply_nan_policy(
         return tuple(filled)
 
     if nan_policy == "propagate":
-        if np.all(nan_mask):
-            return None
-        return tuple(processed)
+        return None
 
     omitted = int(np.sum(nan_mask))
     warnings.warn(

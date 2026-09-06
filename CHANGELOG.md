@@ -4,59 +4,50 @@ All notable changes to the `shesha` package will be documented in this file.
 
 ## [Unreleased]
 
+No unreleased changes.
+
 ---
 
 ## [0.2.29] - 2026-09-06
 
-Safety release. Algorithms for `sample_split` and `anchor_stability` are
-unchanged; their current outputs must not be used for scientific inference.
+Safety release. Finite-distance calculations for `sample_split` and `anchor_stability` are unchanged; undefined distances now follow `nan_policy`. Their outputs must not be used for scientific inference.
 
 ### Fixed
 
-- `sample_split`: the function independently draws two subsets and correlates their condensed RDMs. Corresponding entries do not refer to the same observation pairs, so the estimand is not scientifically identifiable. The algorithm is unchanged. A `FutureWarning` is now emitted on every call (including `shesha(..., variant='sample_split')`). 0.3.0 will replace this with a matched-replicate API (`replicate_stability`).
-- `anchor_stability`: fixed anchors are compared to two different probe sets, so corresponding columns do not refer to the same observations. Rank-normalizing does not restore correspondence. The algorithm is unchanged. A `FutureWarning` is now emitted on every call (including `shesha(..., variant='anchor')`). 0.3.0 will replace this with a matched-observation API (`anchor_profile_stability`).
-- `feature_split` **basis dependence**: the score measures coordinate-axis redundancy, not basis-invariant geometry. Orthogonal rotations can change the score while leaving pairwise Euclidean RDMs unchanged. This is now stated in the docstring, user guide, README / PyPI known-limitations section, and `docs/guide/caveats.rst`. The rotation example
-(`examples/similarity_comparison.py`) no longer claims the score is invariant.
-- **Silent NaN coercion**: cosine/correlation distances that are undefined (zero or constant vectors) were filled with `1.0` via `nan_to_num` with no warning. RDM paths now take `nan_policy` (`replace`, `raise`, `omit`, `propagate`). Default remains `replace` (fill `1.0`) for compatibility; a `FutureWarning` is emitted when a replacement actually occurs. The default becomes `raise` in 0.3.0. Applies to `feature_split`, `compute_rdm`, `sample_split`, `anchor_stability`, `rdm_similarity`, `rdm_drift`, and `shesha.sim.rdm_similarity`.
+- `sample_split`: the function independently draws two subsets and correlates their condensed RDMs. Corresponding entries do not refer to the same observation pairs, so the estimand is not scientifically identifiable. Finite-distance calculations are unchanged. A `FutureWarning` is now emitted on every call (including `shesha(..., variant='sample_split')`). 0.3.0 will replace this with a matched-replicate API (`replicate_stability`).
+- `anchor_stability`: fixed anchors are compared to two different probe sets, so corresponding columns do not refer to the same observations. Rank-normalizing does not restore correspondence. Finite-distance calculations are unchanged. A `FutureWarning` is now emitted on every call (including `shesha(..., variant='anchor')`). 0.3.0 will replace this with a matched-observation API (`anchor_profile_stability`).
+- `feature_split` **basis dependence**: the score measures coordinate-axis redundancy, not basis-invariant geometry. Orthogonal rotations can change the score while leaving pairwise Euclidean RDMs unchanged. This is now stated in the docstring, user guide, README / PyPI known-limitations section, and `docs/guide/caveats.rst`. The rotation example (`examples/similarity_comparison.py`) no longer claims the score is invariant.
+- **Undefined distances**: RDM paths now take `nan_policy` (`replace`, `raise`, `omit`, `propagate`). Default is `replace` (fill `1.0`) across RDM paths for a consistent 0.2.29 API; this intentionally changes undefined-distance behavior in `compute_rdm`, `sample_split`, `anchor_stability`, and `shesha.sim.rdm_similarity`. Behavior is unchanged when all computed distances are finite. A `FutureWarning` is emitted when replacement occurs, and the default becomes `raise` in 0.3.0. `propagate` now makes the entire estimator undefined. `compute_rdm` rejects `omit` when removing entries would break condensed-RDM indexing; paired estimators omit aligned pairs.
 - **Duplicate RDM implementations**: `shesha.rdm_similarity` and `shesha.sim.rdm_similarity` had different parameter order and divergent edge-case behavior (zero-vector NaNs; `n < 3` returned `NaN` vs `0.0`). They now share `shesha/_rdm.py`. Public signatures, including positional argument order, are unchanged. Both return `NaN` when there are fewer than 3 samples.
-- **Input validation**: public `core` / `sim` functions (and `perturbation_coherence`) now raise on non-2D inputs, non-finite values, mismatched sample/label lengths, unsupported metrics, invalid fractions, and non-positive split/bootstrap counts. Valid-but-unestimable shapes (too few samples or features) still return `NaN`.
+- **Procrustes similarity**: corrected the alignment direction and replaced element-wise mean residual scaling with total-energy normalization. Perfect orthogonal rotations now score 1.0, while unrelated representations no longer collapse toward 1.0 as dimensionality grows.
+- **Similarity examples**: corrected six docstring imports from the nonexistent `shesha.similarity` module to `shesha.sim`; rebuilt `examples/similarity_comparison.py` from controlled constructions whose runtime values match the stated scenarios.
+- **Legacy distance metrics**: undocumented SciPy `pdist`/`cdist` metric names accepted by earlier releases remain available in 0.2.29 with a `FutureWarning`; only each function's documented metric set will remain in 0.3.0.
+- **Input validation**: public `core` / `sim` functions (and `perturbation_coherence`) now raise on non-2D inputs, non-finite values, mismatched sample/label lengths, unsupported metrics, invalid fractions, undersized classes, and non-positive split/bootstrap counts. Paired bootstrap paths validate sample counts before resampling. Valid-but-unestimable shapes (too few samples or features) still return `NaN`.
+- **Reproducibility**: seeded `perturbation_coherence` bootstrap CIs now forward the seed to inner subsampling. `split_half_reproducibility` derives per-perturbation seeds from a stable BLAKE2 digest instead of process-randomized Python `hash()`.
+- **Safety warnings**: removed the public `_skip_estimand_warning` escape hatch; private point-estimate helpers avoid duplicate bootstrap warnings.
 
 
 
 ### Added
 
-- `shesha/_validate.py`: shared helpers for 2D/finite checks, label length,
-metrics, fractions, CI level, and `nan_policy`.
+- `shesha/_validate.py`: shared helpers for 2D/finite checks, label length, metrics, fractions, CI level, and `nan_policy`.
 - `shesha/_rdm.py`: single internal RDM compute/similarity implementation.
-- `docs/guide/caveats.rst` ("What Shesha does not establish"), linked from
-the docs index, unsupervised guide, and README / PyPI.
-- `tests/test_semantic_regression.py`: property tests for `feature_split`
-(redundant structure vs noise, axis concentration, orthogonal rotation,
-feature permutation, per-sample cosine scaling, Monte Carlo error),
-invalid-estimator warnings and near-zero scores on unmatched-sample
-constructions, RDM self-similarity / core–sim equivalence / positional
-signatures, and `nan_policy` raise/replace/propagate.
-- CI: `ruff check` and `black --check` job; built-wheel job (`python -m build`,
-`twine check`, install the wheel, import, pytest); Python 3.13 on the test
-matrix and classifiers.
-- `.github/workflows/publish.yml`: tag-triggered (`v*`) build, Trusted
-Publishing to PyPI, and GitHub Release.
-- `CONTRIBUTING.md` release section (single-source version, signed tags,
-Trusted Publishing environment name `pypi`).
+- `shesha/py.typed`: PEP 561 marker included in wheels; source distributions include the documentation tree and caveats page. Test modules are excluded from the installed wheel.
+- `docs/guide/caveats.rst` ("What Shesha does not establish"), linked from the docs index, unsupervised guide, and README / PyPI.
+- `tests/test_semantic_regression.py`: property tests for `feature_split` (redundant structure vs noise, axis concentration, orthogonal rotation, feature permutation, per-sample cosine scaling, Monte Carlo error), invalid-estimator warnings and near-zero scores on unmatched-sample constructions, RDM self-similarity / core–sim equivalence / positional signatures, and `nan_policy` raise/replace/propagate.
+- CI: `ruff check` and `black --check`; isolated built-wheel tests; a warning-clean Sphinx documentation build; Python 3.13 in the test matrix.
+- `.github/workflows/publish.yml`: tag-triggered (`v*`) build, GitHub-verified signed-tag and `main` ancestry checks, tag/package version validation, isolated wheel smoke test, Trusted Publishing to PyPI, and GitHub Release.
+- `CONTRIBUTING.md` release section (single-source version, signed tags, Trusted Publishing environment name `pypi`).
 
 
 
 ### Changed
 
-- Version is single-sourced from `pyproject.toml` (`0.2.29`).
-`shesha.__version__` and the Sphinx `release` read it.
-- `shesha()` unified-interface docs mark `sample_split` and `anchor` as
-invalid estimands.
-- Unsupervised and bootstrap-CI guides: rewrite `sample_split` /
-`anchor_stability` as compatibility-only; CIs on those functions inherit
-the same invalid estimand.
-- `examples/tutorial.py`: sample-split / anchor sections and the variant
-chooser no longer recommend those estimators for inference.
+- Version is single-sourced from `pyproject.toml` (`0.2.29`). `shesha.__version__` and the Sphinx `release` read it.
+- `CITATION.cff` release metadata updated to version `0.2.29` and `2026-09-06`.
+- `shesha()` unified-interface docs mark `sample_split` and `anchor` as invalid estimands.
+- Unsupervised and bootstrap-CI guides: rewrite `sample_split` / `anchor_stability` as compatibility-only; CIs on those functions inherit the same invalid estimand.
+- `examples/tutorial.py`: sample-split / anchor sections and the variant chooser no longer recommend those estimators for inference.
 - `dev` extras include `build` and `twine` for local release checks.
 - Package and tests formatted to satisfy the new lint job (`black`, `ruff`).
 
@@ -246,7 +237,7 @@ dependency via `anndata`; now required directly by `shesha.bio`).
 
 ### Added
 
-- **Bootstrap confidence intervals** (outer bootstrap on input data): optional `n_bootstrap_ci` and `ci` parameters on all public metrics in `shesha.core`, `shesha.bio`, and `shesha.sim`. When `n_bootstrap_ci` is set, functions return a dict with `mean`, `ci_low`, `ci_high`, `std`, `n_bootstraps`, and `ci_level`; default behaviour (no `n_bootstrap_ci`) still returns a `float`.
+- **Bootstrap confidence intervals** (outer bootstrap on input data): optional `n_bootstrap_ci` and `ci` parameters on supported public metrics in `shesha.core`, `shesha.bio`, and `shesha.sim`. When `n_bootstrap_ci` is set, those functions return a dict with `mean`, `ci_low`, `ci_high`, `std`, `n_bootstraps`, and `ci_level`; default behaviour (no `n_bootstrap_ci`) still returns a `float`.
 - `shesha/_utils.py`: shared helpers `bootstrap_ci`, `bootstrap_ci_two_sample`, and `bootstrap_ci_bio` for single-matrix, paired two-sample, and independent two-population resampling.
 - `tests/test_bootstrap_ci.py`: tests for CI dict structure, backward compatibility, determinism, and coverage across core, bio, and sim.
 - Read the Docs user guide `docs/guide/bootstrap_ci.rst`; CI examples added to existing guides and quickstart.

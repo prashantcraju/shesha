@@ -5,6 +5,8 @@ Public wrappers in ``shesha.core`` and ``shesha.sim`` keep their documented
 parameter order and delegate here.
 """
 
+import warnings
+
 import numpy as np
 from scipy.spatial.distance import pdist
 from scipy.stats import pearsonr, spearmanr
@@ -22,6 +24,33 @@ RDM_METRICS = ("cosine", "correlation", "euclidean")
 CORR_METHODS = ("spearman", "pearson")
 
 
+def validate_rdm_metric(metric: str, documented=RDM_METRICS) -> None:
+    """Accept legacy SciPy distance names with a deprecation warning."""
+    if metric in documented:
+        return
+    try:
+        probe = np.array(
+            [
+                [0.0, 0.0, 1.0],
+                [0.0, 1.0, 0.0],
+                [1.0, 0.0, 0.0],
+                [1.0, 1.0, 0.0],
+                [1.0, 0.0, 1.0],
+                [0.0, 1.0, 1.0],
+            ]
+        )
+        pdist(probe, metric=metric)
+    except (TypeError, ValueError):
+        validate_metric(metric, documented)
+    warnings.warn(
+        f"Distance metric {metric!r} is accepted for 0.2.x compatibility but is "
+        f"outside this function's documented metrics {tuple(documented)!r}. "
+        "Support for undocumented SciPy metrics will be removed in 0.3.0.",
+        FutureWarning,
+        stacklevel=3,
+    )
+
+
 def compute_rdm_impl(
     X: np.ndarray,
     metric: str = "cosine",
@@ -30,7 +59,7 @@ def compute_rdm_impl(
 ) -> np.ndarray:
     """Compute a condensed RDM, applying ``nan_policy`` to undefined distances."""
     X = as_2d_array(X, "X")
-    validate_metric(metric, RDM_METRICS)
+    validate_rdm_metric(metric)
     validate_nan_policy(nan_policy)
 
     if normalize and metric == "cosine":
@@ -38,9 +67,15 @@ def compute_rdm_impl(
         X = X / np.maximum(norms, EPS)
 
     rdm = pdist(X, metric=metric)
+    if nan_policy == "propagate":
+        return rdm
+    if nan_policy == "omit" and not np.all(np.isfinite(rdm)):
+        raise ValueError(
+            "nan_policy='omit' is not supported by compute_rdm when distances are "
+            "undefined because removing entries would break the condensed-RDM shape. "
+            "Use nan_policy='propagate' or apply omission in a paired estimator."
+        )
     handled = apply_nan_policy(rdm, nan_policy=nan_policy)
-    if handled is None:
-        return np.full(rdm.shape, np.nan, dtype=np.float64)
     return handled[0]
 
 
@@ -78,7 +113,7 @@ def rdm_similarity_impl(
     X = as_2d_array(X, "X")
     Y = as_2d_array(Y, "Y")
     validate_paired_samples(X, Y)
-    validate_metric(metric, RDM_METRICS)
+    validate_rdm_metric(metric)
     validate_metric(method, CORR_METHODS, name="method")
     validate_nan_policy(nan_policy)
 

@@ -5,6 +5,7 @@ This module provides Shesha variants for single-cell and perturbation biology,
 measuring the consistency of perturbation effects across individual cells.
 """
 
+import hashlib
 from typing import Optional, Union
 
 import numpy as np
@@ -16,7 +17,13 @@ except ImportError:
     from typing_extensions import Literal
 
 from ._utils import bootstrap_ci_bio
-from ._validate import as_2d_array, validate_ci, validate_positive_int
+from ._validate import (
+    as_2d_array,
+    validate_ci,
+    validate_metric,
+    validate_positive_float,
+    validate_positive_int,
+)
 
 try:
     from anndata import AnnData
@@ -38,6 +45,15 @@ __all__ = [
 ]
 
 EPS = 1e-12
+
+
+def _stable_label_seed(label: object, base_seed: int) -> int:
+    """Derive a process-independent per-label seed."""
+    label_type = f"{type(label).__module__}.{type(label).__qualname__}"
+    payload = f"{label_type}:{label!r}".encode("utf-8")
+    digest = hashlib.blake2b(payload, digest_size=8).digest()
+    stable_offset = int.from_bytes(digest, byteorder="big") % 100_000
+    return int(base_seed) + stable_offset
 
 
 def perturbation_coherence(
@@ -123,8 +139,19 @@ def perturbation_coherence(
     """
     validate_positive_int(n_bootstrap_ci, "n_bootstrap_ci", allow_none=True)
     validate_ci(ci)
+    validate_metric(method, ("standard", "whitened", "knn"), name="method")
+    validate_metric(metric, ("cosine", "euclidean"))
+    validate_positive_int(k, "k")
+    validate_positive_float(regularization, "regularization")
+    validate_positive_int(max_samples, "max_samples", allow_none=True)
     X_control = as_2d_array(X_control, "X_control")
     X_perturbed = as_2d_array(X_perturbed, "X_perturbed")
+
+    if X_control.shape[1] != X_perturbed.shape[1]:
+        raise ValueError(
+            f"Feature dimensions must match: control has {X_control.shape[1]}, "
+            f"perturbed has {X_perturbed.shape[1]}"
+        )
 
     if n_bootstrap_ci is not None:
         return bootstrap_ci_bio(
@@ -138,13 +165,8 @@ def perturbation_coherence(
             metric=metric,
             k=k,
             regularization=regularization,
+            seed=seed,
             max_samples=max_samples,
-        )
-
-    if X_control.shape[1] != X_perturbed.shape[1]:
-        raise ValueError(
-            f"Feature dimensions must match: control has {X_control.shape[1]}, "
-            f"perturbed has {X_perturbed.shape[1]}"
         )
 
     if len(X_control) < 5:
@@ -849,7 +871,7 @@ def split_half_reproducibility(
             continue
 
         X_pert = _get_array(adata, pert_mask, layer)
-        pert_seed = random_state + hash(pert) % 100_000
+        pert_seed = _stable_label_seed(pert, random_state)
 
         cosine = _split_half_cosine(
             X_pert,
@@ -994,6 +1016,7 @@ def discordance(
         Column with magnitude/effect-size scores.
     method : {'linear', 'rank', 'loess'}, default='linear'
         How to model the expected coherence-magnitude relationship:
+
         - 'linear': OLS residual, sign-flipped, z-scored.
         - 'rank': rank(Mp) - rank(Sp), z-scored.
         - 'loess': LOESS residual (local regression), sign-flipped, z-scored.

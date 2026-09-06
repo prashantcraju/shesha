@@ -234,6 +234,15 @@ class TestPerturbationCoherenceCI:
             )
             assert_valid_ci_dict(result)
 
+    def test_seeded_subsampled_bootstrap_is_deterministic(self):
+        rng = np.random.default_rng(7)
+        X_ctrl = rng.standard_normal((100, 12))
+        X_pert = rng.standard_normal((100, 12)) + 0.2
+        kwargs = dict(seed=320, max_samples=25, n_bootstrap_ci=20)
+        first = perturbation_coherence(X_ctrl, X_pert, **kwargs)
+        second = perturbation_coherence(X_ctrl, X_pert, **kwargs)
+        assert first == second
+
 
 class TestPerturbationEffectSizeCI:
     def test_returns_dict(self, bio_data):

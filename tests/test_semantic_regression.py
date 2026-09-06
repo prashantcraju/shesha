@@ -5,6 +5,8 @@ These tests check scientific behavior, not just that a function returns a
 bounded float.
 """
 
+import inspect
+
 import numpy as np
 import pytest
 
@@ -103,6 +105,10 @@ class TestInvalidEstimators:
         with pytest.warns(FutureWarning, match="different probe observations"):
             shesha.anchor_stability(X, n_splits=5, seed=320)
 
+    def test_estimand_warning_cannot_be_bypassed(self):
+        assert "_skip_estimand_warning" not in inspect.signature(shesha.sample_split).parameters
+        assert "_skip_estimand_warning" not in inspect.signature(shesha.anchor_stability).parameters
+
     def test_unified_wrapper_warns_for_sample_split(self):
         X = np.random.default_rng(0).standard_normal((80, 32))
         with pytest.warns(FutureWarning, match="unmatched RDM entries"):
@@ -148,6 +154,16 @@ class TestRdmSemantics:
         assert sim_pos == pytest.approx(sim_kw, abs=1e-12)
         assert core_kw == pytest.approx(sim_kw, abs=1e-12)
 
+    def test_legacy_scipy_metric_warns_but_still_runs(self):
+        rng = np.random.default_rng(31)
+        X = rng.standard_normal((30, 8))
+        with pytest.warns(FutureWarning, match="0.2.x compatibility"):
+            rdm = shesha.compute_rdm(X, metric="cityblock")
+        assert rdm.shape == (435,)
+        with pytest.warns(FutureWarning, match="0.2.x compatibility"):
+            score = shesha.feature_split(X, n_splits=3, metric="cityblock", seed=1)
+        assert np.isfinite(score)
+
     def test_fewer_than_three_samples_returns_nan(self):
         X = np.random.randn(2, 8)
         Y = np.random.randn(2, 8)
@@ -176,6 +192,37 @@ class TestRdmSemantics:
         val = shesha.rdm_similarity(X, Y, metric="cosine", nan_policy="propagate")
         assert np.isnan(val)
 
+    def test_feature_split_partial_nan_propagates_entire_result(self):
+        rng = np.random.default_rng(18)
+        X = rng.standard_normal((20, 8))
+        X[0] = [0, 0, 0, 0, 1, 2, 3, 4]
+        result = shesha.feature_split(
+            X,
+            n_splits=8,
+            seed=0,
+            metric="correlation",
+            nan_policy="propagate",
+            return_all_splits=True,
+        )
+        assert np.isnan(result["mean"])
+        assert result["split_scores"] == []
+
+    def test_compute_rdm_omit_rejects_broken_condensed_shape(self):
+        X = np.random.default_rng(2).standard_normal((20, 10))
+        X[0] = 0.0
+        with pytest.raises(ValueError, match="condensed-RDM shape"):
+            shesha.compute_rdm(X, nan_policy="omit")
+
+    @pytest.mark.parametrize(
+        "func",
+        [shesha.rdm_similarity, shesha.rdm_drift, sim.rdm_similarity],
+    )
+    def test_bootstrap_validates_paired_sample_counts(self, func):
+        X = np.ones((10, 3))
+        Y = np.ones((5, 3))
+        with pytest.raises(ValueError, match="same number of samples"):
+            func(X, Y, n_bootstrap_ci=3, seed=1)
+
     def test_feature_split_nan_policy_raise(self):
         X = np.random.default_rng(3).standard_normal((40, 20))
         X[0] = 0.0
@@ -200,11 +247,37 @@ class TestInputValidation:
         with pytest.raises(ValueError, match="must match number of samples"):
             shesha.variance_ratio(X, y)
 
+    def test_labels_must_be_one_dimensional(self):
+        X = np.random.randn(20, 8)
+        y = np.arange(20).reshape(2, 10)
+        with pytest.raises(ValueError, match="1-dimensional"):
+            shesha.variance_ratio(X, y)
+
+    @pytest.mark.parametrize(
+        "func",
+        [shesha.variance_ratio, shesha.supervised_alignment, shesha.class_separation_ratio],
+    )
+    def test_singleton_class_raises(self, func):
+        X = np.random.default_rng(0).standard_normal((5, 3))
+        y = np.array([0, 1, 1, 1, 1])
+        with pytest.raises(ValueError, match="at least 2 observations"):
+            func(X, y)
+
+    def test_lda_singleton_class_raises(self):
+        X = np.random.default_rng(0).standard_normal((5, 3))
+        y = np.array([0, 1, 1, 1, 1])
+        with pytest.raises(ValueError, match="at least 2 observations"):
+            shesha.lda_stability(X, y, n_bootstrap=3)
+
     def test_invalid_fraction_raises(self):
         X = np.random.randn(40, 12)
         with pytest.warns(FutureWarning):
             with pytest.raises(ValueError, match="subsample_fraction"):
                 shesha.sample_split(X, subsample_fraction=0.0)
+
+    def test_invalid_ci_type_raises_value_error(self):
+        with pytest.raises(ValueError, match="ci must be"):
+            shesha.variance_ratio(np.ones((4, 2)), [0, 0, 1, 1], ci="bad")
 
     def test_invalid_nan_policy_raises(self):
         X = np.random.randn(20, 10)
