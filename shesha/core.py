@@ -198,22 +198,33 @@ def feature_split(
     >>> result = feature_split(X, n_splits=30, seed=320, return_all_splits=True)
     >>> scores = result["split_scores"]
     """
+    options = {
+        "n_splits": n_splits,
+        "metric": metric,
+        "seed": seed,
+        "max_samples": max_samples,
+        "n_bootstrap_ci": n_bootstrap_ci,
+        "ci": ci,
+        "return_all_splits": return_all_splits,
+        "nan_policy": nan_policy,
+    }
     if isinstance(X, list):
-        return [
-            feature_split(
-                x,
-                n_splits=n_splits,
-                metric=metric,
-                seed=seed,
-                max_samples=max_samples,
-                n_bootstrap_ci=n_bootstrap_ci,
-                ci=ci,
-                return_all_splits=return_all_splits,
-                nan_policy=nan_policy,
-            )
-            for x in X
-        ]
+        return [_feature_split_single(array, **options) for array in X]
+    return _feature_split_single(X, **options)
 
+
+def _feature_split_single(
+    X: np.ndarray,
+    n_splits: int,
+    metric: str,
+    seed: Optional[int],
+    max_samples: Optional[int],
+    n_bootstrap_ci: Optional[int],
+    ci: float,
+    return_all_splits: bool,
+    nan_policy: str,
+) -> Union[float, dict]:
+    """Validate and dispatch a single feature-split input."""
     validate_positive_int(n_splits, "n_splits")
     validate_rdm_metric(metric, ("cosine", "correlation"))
     validate_positive_int(max_samples, "max_samples", allow_none=True)
@@ -228,7 +239,7 @@ def feature_split(
 
     if n_bootstrap_ci is not None:
         return bootstrap_ci(
-            feature_split,
+            _feature_split_point_estimate,
             n_bootstrap_ci,
             ci,
             seed,
@@ -239,59 +250,89 @@ def feature_split(
             max_samples=max_samples,
             nan_policy=nan_policy,
         )
-    n_samples, n_features = X.shape
+    return _feature_split_point_estimate(
+        X,
+        n_splits=n_splits,
+        metric=metric,
+        seed=seed,
+        max_samples=max_samples,
+        nan_policy=nan_policy,
+        return_all_splits=return_all_splits,
+    )
 
-    if n_features < 4:
-        return np.nan
-    if n_samples < 4:
+
+def _feature_split_point_estimate(
+    X: np.ndarray,
+    n_splits: int,
+    metric: str,
+    seed: Optional[int],
+    max_samples: Optional[int],
+    nan_policy: str,
+    return_all_splits: bool = False,
+) -> Union[float, dict]:
+    """Compute a feature-split point estimate on an already validated array."""
+    if X.shape[0] < 4 or X.shape[1] < 4:
         return np.nan
 
     rng = np.random.default_rng(seed)
+    X = _prepare_feature_split_data(X, metric, max_samples, rng)
+    correlations = []
+    for _ in range(n_splits):
+        score, should_propagate = _score_feature_partition(X, metric, nan_policy, rng)
+        if should_propagate:
+            return _feature_split_result([], return_all_splits)
+        if score is not None:
+            correlations.append(score)
+    return _feature_split_result(correlations, return_all_splits)
 
-    # Subsample if needed
-    if max_samples is not None and n_samples > max_samples:
-        idx = rng.choice(n_samples, max_samples, replace=False)
-        X = X[idx]
-        n_samples = max_samples
 
-    # L2 normalize for cosine metric
+def _prepare_feature_split_data(
+    X: np.ndarray,
+    metric: str,
+    max_samples: Optional[int],
+    rng: np.random.Generator,
+) -> np.ndarray:
+    """Apply deterministic subsampling and cosine normalization."""
+    if max_samples is not None and X.shape[0] > max_samples:
+        X = X[rng.choice(X.shape[0], max_samples, replace=False)]
     if metric == "cosine":
         norms = np.linalg.norm(X, axis=1, keepdims=True)
         X = X / np.maximum(norms, EPS)
+    return X
 
-    correlations = []
 
-    for i in range(n_splits):
-        # Random partition of features
-        perm = rng.permutation(n_features)
-        mid = n_features // 2
-        feat1, feat2 = perm[:mid], perm[mid : 2 * mid]
+def _score_feature_partition(
+    X: np.ndarray,
+    metric: str,
+    nan_policy: str,
+    rng: np.random.Generator,
+) -> tuple:
+    """Score one random feature partition and report NaN propagation."""
+    permutation = rng.permutation(X.shape[1])
+    midpoint = X.shape[1] // 2
+    first, second = permutation[:midpoint], permutation[midpoint : 2 * midpoint]
+    rdms = apply_nan_policy(
+        pdist(X[:, first], metric=metric),
+        pdist(X[:, second], metric=metric),
+        nan_policy=nan_policy,
+    )
+    if rdms is None:
+        return None, True
+    rdm1, rdm2 = rdms
+    if rdm1.size < 2 or np.std(rdm1) < EPS or np.std(rdm2) < EPS:
+        return None, False
+    rho, _ = spearmanr(rdm1, rdm2)
+    return (float(rho), False) if np.isfinite(rho) else (None, False)
 
-        X1, X2 = X[:, feat1], X[:, feat2]
 
-        rdm1 = pdist(X1, metric=metric)
-        rdm2 = pdist(X2, metric=metric)
-        handled = apply_nan_policy(rdm1, rdm2, nan_policy=nan_policy)
-        if handled is None:
-            if return_all_splits:
-                return {"mean": np.nan, "split_scores": []}
-            return np.nan
-        rdm1, rdm2 = handled
-
-        if rdm1.size < 2 or np.std(rdm1) < EPS or np.std(rdm2) < EPS:
-            continue
-
-        rho, _ = spearmanr(rdm1, rdm2)
-        if np.isfinite(rho):
-            correlations.append(rho)
-
+def _feature_split_result(correlations: List[float], return_all_splits: bool):
+    """Format a feature-split point estimate."""
     mean_score = float(np.mean(correlations)) if correlations else np.nan
     if return_all_splits:
         return {
             "mean": mean_score,
             "split_scores": [float(score) for score in correlations],
         }
-
     return mean_score
 
 
