@@ -1,4 +1,5 @@
 import numpy as np
+
 from shesha.bio import perturbation_coherence, perturbation_effect_size
 
 # Test 1: Basic functionality

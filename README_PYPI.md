@@ -45,6 +45,11 @@ print(f"Feature-split stability: {stability:.3f}")
 
 For the full API reference, installation guide, and usage examples, see the [documentation](https://shesha-geometry.readthedocs.io/en/latest/).
 
+## Known limitations
+
+- `feature_split` measures **coordinate-axis redundancy**, not basis-invariant geometry. Orthogonal rotations can change the score while leaving pairwise Euclidean RDMs unchanged. See [What Shesha does not establish](https://shesha-geometry.readthedocs.io/en/latest/guide/caveats.html).
+- `sample_split` and `anchor_stability` correlate unmatched distance entries. Their current outputs must not be used for scientific inference; they emit `FutureWarning` and will be replaced in 0.3.0.
+
 ## Tutorials
 
 Explore `shesha` with these interactive notebooks (most take < 5 minutes; the vision tutorial is longer because it loads several pretrained models):

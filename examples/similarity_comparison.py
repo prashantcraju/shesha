@@ -25,8 +25,9 @@ def create_representations():
     # Original representation
     X_original = np.random.randn(200, 100)
     
-    # Scenario 1: High similarity, high stability (ideal case)
-    # Just a rotation - preserves both similarity and stability
+    # Scenario 1: High similarity; feature-split score may change
+    # A rotation preserves pairwise Euclidean geometry (CKA/RDM/Procrustes)
+    # but reallocates information across coordinates, so feature_split can move.
     Q = np.linalg.qr(np.random.randn(100, 100))[0]
     X_rotated = X_original @ Q
     
@@ -74,11 +75,11 @@ def main():
     proc_rot = sim.procrustes_similarity(X_ref, X_rot)
     
     print(f"  Reference Stability:  {stab_ref:.3f}")
-    print(f"  Rotated Stability:    {stab_rot:.3f}  (should be similar)")
+    print(f"  Rotated Stability:    {stab_rot:.3f}  (feature_split can change under rotation)")
     print(f"  CKA Similarity:       {cka_rot:.3f}  (should be high ~1.0)")
     print(f"  RDM Similarity:       {rdm_rot:.3f}  (should be high)")
     print(f"  Procrustes Similarity:{proc_rot:.3f}  (should be high ~1.0)")
-    print("\n  [+] High Stability + High Similarity = Ideal")
+    print("\n  [+] Rotation preserves RDM similarity; feature_split is basis-dependent")
     
     print("\n\nScenario 2: Corrupted Representation (Geometric Tax)")
     print("-" * 70)

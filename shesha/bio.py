@@ -5,15 +5,18 @@ This module provides Shesha variants for single-cell and perturbation biology,
 measuring the consistency of perturbation effects across individual cells.
 """
 
+from typing import Optional, Union
+
 import numpy as np
 import pandas as pd
-from typing import Optional, Union
+
 try:
     from typing import Literal
 except ImportError:
     from typing_extensions import Literal
 
 from ._utils import bootstrap_ci_bio
+from ._validate import as_2d_array, validate_ci, validate_positive_int
 
 try:
     from anndata import AnnData
@@ -21,10 +24,10 @@ except ImportError:
     AnnData = None
 
 __all__ = [
-    "perturbation_coherence", 
+    "perturbation_coherence",
     "perturbation_coherence_whitened",
     "perturbation_coherence_knn",
-    "perturbation_effect_size", 
+    "perturbation_effect_size",
     "compute_coherence",
     "compute_coherence_whitened",
     "compute_coherence_knn",
@@ -51,12 +54,12 @@ def perturbation_coherence(
 ) -> Union[float, dict]:
     """
     Perturbation coherence: consistency of perturbation effects across samples.
-    
+
     Measures whether individual perturbed samples shift in a consistent direction
     relative to the control population. High values indicate that the perturbation
     has a coherent, reproducible effect; low values suggest heterogeneous or noisy
     responses.
-    
+
     Parameters
     ----------
     X_control : np.ndarray
@@ -83,7 +86,7 @@ def perturbation_coherence(
         control and perturbed populations this many times.
     ci : float, default=0.95
         Confidence level for the interval.
-    
+
     Returns
     -------
     float or dict
@@ -91,72 +94,75 @@ def perturbation_coherence(
         Higher = more consistent perturbation effect.
         If n_bootstrap_ci is set: dict with keys 'mean', 'ci_low', 'ci_high',
         'std', 'n_bootstraps', 'ci_level'.
-    
+
     Examples
     --------
     >>> # Control and perturbed cell populations
     >>> X_ctrl = np.random.randn(500, 50)  # 500 control cells, 50 genes
     >>> shift = np.random.randn(50)  # consistent direction
     >>> X_pert = X_ctrl + shift + np.random.randn(500, 50) * 0.1
-    >>> 
+    >>>
     >>> # Standard coherence
     >>> coherence = perturbation_coherence(X_ctrl, X_pert, method='standard')
-    >>> 
+    >>>
     >>> # With bootstrap CI
     >>> result = perturbation_coherence(X_ctrl, X_pert, n_bootstrap_ci=1000)
     >>> print(f"{result['mean']:.3f} [{result['ci_low']:.3f}, {result['ci_high']:.3f}]")
-    
+
     Notes
     -----
     Method selection:
     - 'standard': Best for homogeneous controls, computationally fastest
     - 'whitened': Better when features have different scales or are correlated
     - 'knn': Best for heterogeneous controls with multiple cell types/states
-    
+
     The control reference is computed differently for each method:
     - Standard: Global centroid of all control cells
     - Whitened: Mahalanobis-scaled space accounting for control covariance
     - k-NN: Local centroid of k nearest control cells for each perturbed cell
     """
-    X_control = np.asarray(X_control, dtype=np.float64)
-    X_perturbed = np.asarray(X_perturbed, dtype=np.float64)
+    validate_positive_int(n_bootstrap_ci, "n_bootstrap_ci", allow_none=True)
+    validate_ci(ci)
+    X_control = as_2d_array(X_control, "X_control")
+    X_perturbed = as_2d_array(X_perturbed, "X_perturbed")
 
     if n_bootstrap_ci is not None:
         return bootstrap_ci_bio(
-            perturbation_coherence, n_bootstrap_ci, ci, seed,
-            X_control, X_perturbed,
-            method=method, metric=metric, k=k,
-            regularization=regularization, max_samples=max_samples,
+            perturbation_coherence,
+            n_bootstrap_ci,
+            ci,
+            seed,
+            X_control,
+            X_perturbed,
+            method=method,
+            metric=metric,
+            k=k,
+            regularization=regularization,
+            max_samples=max_samples,
         )
-    
+
     if X_control.shape[1] != X_perturbed.shape[1]:
         raise ValueError(
             f"Feature dimensions must match: control has {X_control.shape[1]}, "
             f"perturbed has {X_perturbed.shape[1]}"
         )
-    
+
     if len(X_control) < 5:
         return np.nan
     if len(X_perturbed) < 5:
         return np.nan
-    
+
     # Dispatch to appropriate method
     if method == "standard":
-        return _perturbation_coherence_standard(
-            X_control, X_perturbed, metric, seed, max_samples
-        )
+        return _perturbation_coherence_standard(X_control, X_perturbed, metric, seed, max_samples)
     elif method == "whitened":
         return _perturbation_coherence_whitened(
             X_control, X_perturbed, regularization, seed, max_samples
         )
     elif method == "knn":
-        return _perturbation_coherence_knn(
-            X_control, X_perturbed, k, metric, seed, max_samples
-        )
+        return _perturbation_coherence_knn(X_control, X_perturbed, k, metric, seed, max_samples)
     else:
-        raise ValueError(
-            f"Unknown method: {method}. Use 'standard', 'whitened', or 'knn'."
-        )
+        raise ValueError(f"Unknown method: {method}. Use 'standard', 'whitened', or 'knn'.")
 
 
 def _perturbation_coherence_standard(
@@ -168,56 +174,57 @@ def _perturbation_coherence_standard(
 ) -> float:
     """Internal implementation of standard perturbation coherence."""
     rng = np.random.default_rng(seed)
-    
+
     # Subsample perturbed if needed
     if max_samples is not None and len(X_perturbed) > max_samples:
         idx = rng.choice(len(X_perturbed), max_samples, replace=False)
         X_perturbed = X_perturbed[idx]
-    
+
     # Compute control centroid
     control_centroid = np.mean(X_control, axis=0)
-    
+
     # Compute shift vectors for each perturbed sample
     shift_vectors = X_perturbed - control_centroid
-    
+
     # Compute mean shift direction
     mean_shift = np.mean(shift_vectors, axis=0)
     mean_shift_norm = np.linalg.norm(mean_shift)
-    
+
     if mean_shift_norm < EPS:
         # No net shift - perturbation has no coherent effect
         return 0.0
-    
+
     if metric == "cosine":
         # Normalize mean shift
         mean_shift_unit = mean_shift / mean_shift_norm
-        
+
         # Compute cosine similarity of each shift to mean direction
         shift_norms = np.linalg.norm(shift_vectors, axis=1, keepdims=True)
         shift_norms = np.maximum(shift_norms, EPS)
         shift_unit = shift_vectors / shift_norms
-        
+
         # Cosine similarities
         cosines = shift_unit @ mean_shift_unit
-        
+
         return float(np.mean(cosines))
-    
+
     elif metric == "euclidean":
         # Euclidean-based consistency: how tight are shifts around mean?
         # Normalized by expected variance under random shifts
         deviations = shift_vectors - mean_shift
-        deviation_var = np.mean(np.sum(deviations ** 2, axis=1))
-        total_var = np.mean(np.sum(shift_vectors ** 2, axis=1))
-        
+        deviation_var = np.mean(np.sum(deviations**2, axis=1))
+        total_var = np.mean(np.sum(shift_vectors**2, axis=1))
+
         if total_var < EPS:
             return np.nan
-        
+
         # 1 - (deviation / total) gives consistency score
         consistency = 1.0 - (deviation_var / total_var)
         return float(np.clip(consistency, -1, 1))
-    
+
     else:
         raise ValueError(f"Unknown metric: {metric}. Use 'cosine' or 'euclidean'.")
+
 
 def _get_array(adata: "AnnData", mask, layer: Optional[str]) -> np.ndarray:
     """Extract a dense numpy array from an AnnData slice."""
@@ -244,13 +251,13 @@ def compute_coherence(
     control_label: str = "control",
     layer: Optional[str] = None,
     method: Literal["standard", "whitened", "knn"] = "standard",
-    **kwargs
+    **kwargs,
 ) -> dict:
     """
     Scanpy-compatible wrapper for perturbation coherence.
-    
+
     Computes coherence for all perturbations in an AnnData object.
-    
+
     Parameters
     ----------
     adata : AnnData
@@ -269,12 +276,12 @@ def compute_coherence(
     **kwargs
         Additional arguments passed to perturbation_coherence()
         (e.g., k=50 for knn, regularization=1e-6 for whitened).
-    
+
     Returns
     -------
     dict
         Dictionary mapping perturbation names to coherence scores.
-    
+
     Examples
     --------
     >>> import shesha.bio as bio
@@ -305,7 +312,7 @@ def perturbation_effect_size(
 ) -> Union[float, dict]:
     """
     Compute the magnitude of the perturbation effect.
-    
+
     Parameters
     ----------
     X_control : np.ndarray
@@ -313,7 +320,7 @@ def perturbation_effect_size(
     X_perturbed : np.ndarray
         Perturbed population embeddings.
     metric : str, default="euclidean"
-        - 'euclidean': Raw L2 distance between centroids (Magnitude). 
+        - 'euclidean': Raw L2 distance between centroids (Magnitude).
            Use this for geometric plots (Coherence vs Magnitude).
         - 'cohen': Standardized effect size (Magnitude / Pooled SD).
            Use this for statistical power analysis.
@@ -324,7 +331,7 @@ def perturbation_effect_size(
         Confidence level for the interval.
     seed : int, optional
         Random seed for bootstrap reproducibility.
-    
+
     Returns
     -------
     float or dict
@@ -337,32 +344,36 @@ def perturbation_effect_size(
 
     if n_bootstrap_ci is not None:
         return bootstrap_ci_bio(
-            perturbation_effect_size, n_bootstrap_ci, ci, seed,
-            X_control, X_perturbed,
+            perturbation_effect_size,
+            n_bootstrap_ci,
+            ci,
+            seed,
+            X_control,
+            X_perturbed,
             metric=metric,
         )
-    
+
     control_centroid = np.mean(X_control, axis=0)
     perturbed_centroid = np.mean(X_perturbed, axis=0)
-    
+
     # 1. Raw Magnitude (Euclidean Distance)
     shift_magnitude = np.linalg.norm(perturbed_centroid - control_centroid)
-    
+
     if metric == "euclidean":
         return float(shift_magnitude)
-        
+
     elif metric == "cohen":
         # 2. Standardized Effect Size (Cohen's d-like)
         # Pooled standard deviation (averaged across features)
         control_var = np.var(X_control, axis=0, ddof=1)
         perturbed_var = np.var(X_perturbed, axis=0, ddof=1)
-        
+
         # Average variance across features to get a scalar scale
         pooled_var = np.mean((control_var + perturbed_var) / 2)
         pooled_std = np.sqrt(pooled_var) + EPS
-        
+
         return float(shift_magnitude / pooled_std)
-    
+
     else:
         raise ValueError(f"Unknown metric: {metric}")
 
@@ -398,10 +409,10 @@ def compute_coherence_whitened(
 ) -> dict:
     """
     Scanpy-compatible wrapper for whitened perturbation coherence.
-    
+
     Convenience wrapper for compute_coherence(..., method='whitened').
     Consider using the unified interface instead.
-    
+
     Parameters
     ----------
     adata : AnnData
@@ -418,12 +429,12 @@ def compute_coherence_whitened(
         Random seed for subsampling reproducibility.
     max_samples : int, optional
         Subsample perturbed population if exceeded.
-    
+
     Returns
     -------
     dict
         Dictionary mapping perturbation names to whitened coherence scores.
-    
+
     See Also
     --------
     compute_coherence : Unified interface with method='whitened'
@@ -433,10 +444,10 @@ def compute_coherence_whitened(
         perturbation_key,
         control_label=control_label,
         layer=layer,
-        method='whitened',
+        method="whitened",
         regularization=regularization,
         seed=seed,
-        max_samples=max_samples
+        max_samples=max_samples,
     )
 
 
@@ -452,10 +463,10 @@ def compute_coherence_knn(
 ) -> dict:
     """
     Scanpy-compatible wrapper for k-NN matched control coherence.
-    
+
     Convenience wrapper for compute_coherence(..., method='knn').
     Consider using the unified interface instead.
-    
+
     Parameters
     ----------
     adata : AnnData
@@ -474,12 +485,12 @@ def compute_coherence_knn(
         Random seed for subsampling reproducibility.
     max_samples : int, optional
         Subsample perturbed population if exceeded.
-    
+
     Returns
     -------
     dict
         Dictionary mapping perturbation names to k-NN matched coherence scores.
-    
+
     See Also
     --------
     compute_coherence : Unified interface with method='knn'
@@ -489,11 +500,11 @@ def compute_coherence_knn(
         perturbation_key,
         control_label=control_label,
         layer=layer,
-        method='knn',
+        method="knn",
         k=k,
         metric=metric,
         seed=seed,
-        max_samples=max_samples
+        max_samples=max_samples,
     )
 
 
@@ -510,49 +521,49 @@ def _perturbation_coherence_whitened(
         rng = np.random.default_rng(seed)
         idx = rng.choice(len(X_perturbed), max_samples, replace=False)
         X_perturbed = X_perturbed[idx]
-    
+
     # Compute control centroid
     control_centroid = np.mean(X_control, axis=0)
-    
+
     # Compute control covariance
     control_cov = np.cov(X_control.T)
     control_cov_reg = control_cov + regularization * np.eye(control_cov.shape[0])
-    
+
     try:
         # Compute whitening matrix via eigendecomposition
         eigvals, eigvecs = np.linalg.eigh(control_cov_reg)
         eigvals = np.maximum(eigvals, regularization)
         W = eigvecs @ np.diag(1.0 / np.sqrt(eigvals)) @ eigvecs.T
-        
+
         # Apply whitening
         control_centroid_w = W @ control_centroid
         pert_matrix_w = (W @ X_perturbed.T).T
-        
+
         # Compute shift vectors in whitened space
         shift_vectors = pert_matrix_w - control_centroid_w
     except np.linalg.LinAlgError:
         # Fall back to unwhitened if whitening fails
         shift_vectors = X_perturbed - control_centroid
-    
+
     # Compute mean shift direction
     mean_shift = np.mean(shift_vectors, axis=0)
     mean_magnitude = np.linalg.norm(mean_shift)
-    
+
     if mean_magnitude < EPS:
         return 0.0
-    
+
     # Normalize shift vectors
     norms = np.linalg.norm(shift_vectors, axis=1)
     valid_idx = norms > EPS
-    
+
     if np.sum(valid_idx) < 5:
         return 0.0
-    
+
     # Compute coherence as mean cosine similarity to mean direction
     unit_mean = mean_shift / mean_magnitude
     cosine_sims = np.dot(shift_vectors[valid_idx], unit_mean) / norms[valid_idx]
     coherence = np.mean(cosine_sims)
-    
+
     return float(coherence)
 
 
@@ -565,10 +576,10 @@ def perturbation_coherence_whitened(
 ) -> float:
     """
     Whitened (Mahalanobis) perturbation coherence.
-    
+
     Convenience wrapper for perturbation_coherence(..., method='whitened').
     Consider using the unified interface instead.
-    
+
     Parameters
     ----------
     X_control : np.ndarray
@@ -581,22 +592,23 @@ def perturbation_coherence_whitened(
         Random seed for subsampling reproducibility.
     max_samples : int, optional
         Subsample perturbed population if exceeded.
-    
+
     Returns
     -------
     float
         Whitened coherence score in [-1, 1].
-    
+
     See Also
     --------
     perturbation_coherence : Unified interface with method='whitened'
     """
     return perturbation_coherence(
-        X_control, X_perturbed, 
-        method='whitened',
+        X_control,
+        X_perturbed,
+        method="whitened",
         regularization=regularization,
         seed=seed,
-        max_samples=max_samples
+        max_samples=max_samples,
     )
 
 
@@ -616,50 +628,50 @@ def _perturbation_coherence_knn(
             "perturbation_coherence with method='knn' requires scikit-learn. "
             "Install with: pip install scikit-learn"
         )
-    
+
     if len(X_control) < k:
         k = len(X_control)
-    
+
     # Subsample if needed
     if max_samples and len(X_perturbed) > max_samples:
         rng = np.random.default_rng(seed)
         idx = rng.choice(len(X_perturbed), max_samples, replace=False)
         X_perturbed = X_perturbed[idx]
-    
+
     # Fit k-NN on control population
     nn = NearestNeighbors(n_neighbors=k, metric=metric)
     nn.fit(X_control)
-    
+
     # Find k nearest controls for each perturbed cell
     _, indices = nn.kneighbors(X_perturbed)
-    
+
     # Compute shift vectors relative to local control centroids
     shift_vectors = []
     for i, idx in enumerate(indices):
         local_ctrl_centroid = np.mean(X_control[idx], axis=0)
         shift_vectors.append(X_perturbed[i] - local_ctrl_centroid)
-    
+
     shift_vectors = np.array(shift_vectors)
-    
+
     # Compute mean shift direction
     mean_shift = np.mean(shift_vectors, axis=0)
     mean_magnitude = np.linalg.norm(mean_shift)
-    
+
     if mean_magnitude < EPS:
         return 0.0
-    
+
     # Normalize shift vectors
     norms = np.linalg.norm(shift_vectors, axis=1)
     valid_idx = norms > EPS
-    
+
     if np.sum(valid_idx) < 5:
         return 0.0
-    
+
     # Compute coherence as mean cosine similarity to mean direction
     unit_mean = mean_shift / mean_magnitude
     cosine_sims = np.dot(shift_vectors[valid_idx], unit_mean) / norms[valid_idx]
     coherence = np.mean(cosine_sims)
-    
+
     return float(coherence)
 
 
@@ -673,10 +685,10 @@ def perturbation_coherence_knn(
 ) -> float:
     """
     k-NN matched control perturbation coherence.
-    
+
     Convenience wrapper for perturbation_coherence(..., method='knn').
     Consider using the unified interface instead.
-    
+
     Parameters
     ----------
     X_control : np.ndarray
@@ -691,29 +703,25 @@ def perturbation_coherence_knn(
         Random seed for subsampling reproducibility.
     max_samples : int, optional
         Subsample perturbed population if exceeded.
-    
+
     Returns
     -------
     float
         k-NN matched coherence score in [-1, 1].
-    
+
     See Also
     --------
     perturbation_coherence : Unified interface with method='knn'
     """
     return perturbation_coherence(
-        X_control, X_perturbed,
-        method='knn',
-        k=k,
-        metric=metric,
-        seed=seed,
-        max_samples=max_samples
+        X_control, X_perturbed, method="knn", k=k, metric=metric, seed=seed, max_samples=max_samples
     )
 
 
 # =============================================================================
 # Split-Half Reproducibility
 # =============================================================================
+
 
 def _split_half_cosine(
     X_pert: np.ndarray,
@@ -754,7 +762,7 @@ def _split_half_cosine(
     for i in range(n_splits):
         perm = rng.permutation(n_cells)
         half = n_cells // 2
-        idx_a, idx_b = perm[:half], perm[half:2 * half]
+        idx_a, idx_b = perm[:half], perm[half : 2 * half]
 
         shift_a = (X_pert[idx_a] - ctrl_centroid).mean(axis=0)
         shift_b = (X_pert[idx_b] - ctrl_centroid).mean(axis=0)
@@ -844,16 +852,19 @@ def split_half_reproducibility(
         pert_seed = random_state + hash(pert) % 100_000
 
         cosine = _split_half_cosine(
-            X_pert, ctrl_centroid,
+            X_pert,
+            ctrl_centroid,
             n_splits=n_splits,
             seed=pert_seed,
             min_cells=min_cells,
         )
-        rows.append({
-            "perturbation": pert,
-            "split_half_cosine": cosine,
-            "n_cells": n_cells,
-        })
+        rows.append(
+            {
+                "perturbation": pert,
+                "split_half_cosine": cosine,
+                "n_cells": n_cells,
+            }
+        )
 
     df = pd.DataFrame(rows)
     if len(df) > 0:
@@ -914,14 +925,11 @@ def magnitude_matched_comparison(
 
     if len(df) < n_bins * 4:
         raise ValueError(
-            f"Too few perturbations ({len(df)}) for {n_bins} bins. "
-            f"Need at least {n_bins * 4}."
+            f"Too few perturbations ({len(df)}) for {n_bins} bins. " f"Need at least {n_bins * 4}."
         )
 
     bin_labels = [f"Q{i+1}" for i in range(n_bins)]
-    df["_mag_bin"] = pd.qcut(
-        df[magnitude_col], q=n_bins, labels=bin_labels, duplicates="drop"
-    )
+    df["_mag_bin"] = pd.qcut(df[magnitude_col], q=n_bins, labels=bin_labels, duplicates="drop")
 
     results = []
     for q in bin_labels:
@@ -938,17 +946,19 @@ def magnitude_matched_comparison(
 
         rho, pval = spearmanr(subset[coherence_col], subset[repro_col])
 
-        results.append({
-            "mag_bin": q,
-            "n": len(subset),
-            "mag_min": float(subset[magnitude_col].min()),
-            "mag_max": float(subset[magnitude_col].max()),
-            "high_coherence_mean": float(mean_high),
-            "low_coherence_mean": float(mean_low),
-            "difference": float(mean_high - mean_low),
-            "within_bin_rho": float(rho),
-            "within_bin_pvalue": float(pval),
-        })
+        results.append(
+            {
+                "mag_bin": q,
+                "n": len(subset),
+                "mag_min": float(subset[magnitude_col].min()),
+                "mag_max": float(subset[magnitude_col].max()),
+                "high_coherence_mean": float(mean_high),
+                "low_coherence_mean": float(mean_low),
+                "difference": float(mean_high - mean_low),
+                "within_bin_rho": float(rho),
+                "within_bin_pvalue": float(pval),
+            }
+        )
 
     return pd.DataFrame(results)
 
@@ -956,6 +966,7 @@ def magnitude_matched_comparison(
 # =============================================================================
 # Discordance
 # =============================================================================
+
 
 def discordance(
     df: "pd.DataFrame",
@@ -1014,9 +1025,7 @@ def discordance(
     coh = sub[coherence_col].values.astype(np.float64)
 
     if len(sub) < 10:
-        raise ValueError(
-            f"Too few valid observations ({len(sub)}). Need at least 10."
-        )
+        raise ValueError(f"Too few valid observations ({len(sub)}). Need at least 10.")
 
     if method == "linear":
         X = np.column_stack([np.ones_like(mag), mag])
@@ -1035,17 +1044,14 @@ def discordance(
             from statsmodels.nonparametric.smoothers_lowess import lowess
         except ImportError:
             raise ImportError(
-                "method='loess' requires statsmodels. "
-                "Install with: pip install statsmodels"
+                "method='loess' requires statsmodels. " "Install with: pip install statsmodels"
             )
         fitted = lowess(coh, mag, frac=loess_frac, return_sorted=False)
         resid = coh - fitted
         d = -resid
 
     else:
-        raise ValueError(
-            f"Unknown method: {method!r}. Use 'linear', 'rank', or 'loess'."
-        )
+        raise ValueError(f"Unknown method: {method!r}. Use 'linear', 'rank', or 'loess'.")
 
     std = d.std()
     if std < EPS:

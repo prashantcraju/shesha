@@ -2,15 +2,16 @@
 
 import numpy as np
 import pytest
+
 import shesha
 from shesha.bio import perturbation_coherence, perturbation_effect_size
-from shesha.sim import cka, cka_linear, cka_debiased, procrustes_similarity
+from shesha.sim import cka, cka_debiased, cka_linear, procrustes_similarity
 from shesha.sim import rdm_similarity as sim_rdm_similarity
-
 
 # ============================================================================
 # Fixtures
 # ============================================================================
+
 
 @pytest.fixture
 def X():
@@ -57,6 +58,7 @@ def bio_data():
 # Helper to validate CI dict structure
 # ============================================================================
 
+
 def assert_valid_ci_dict(result, ci_level=0.95):
     """Check that the result is a well-formed CI dictionary."""
     assert isinstance(result, dict)
@@ -78,6 +80,7 @@ def assert_valid_ci_dict(result, ci_level=0.95):
 # ============================================================================
 # Core module tests
 # ============================================================================
+
 
 class TestFeatureSplitCI:
     def test_returns_dict(self, X):
@@ -110,6 +113,7 @@ class TestFeatureSplitCI:
         assert result["std"] < 0.1
 
 
+@pytest.mark.filterwarnings("ignore:sample_split correlates unmatched:FutureWarning")
 class TestSampleSplitCI:
     def test_returns_dict(self, X):
         result = shesha.sample_split(X, n_splits=5, seed=320, n_bootstrap_ci=20)
@@ -120,6 +124,7 @@ class TestSampleSplitCI:
         assert isinstance(result, float)
 
 
+@pytest.mark.filterwarnings("ignore:anchor_stability correlates flattened:FutureWarning")
 class TestAnchorStabilityCI:
     def test_returns_dict(self, X):
         result = shesha.anchor_stability(X, n_splits=5, seed=320, n_bootstrap_ci=20)
@@ -203,6 +208,7 @@ class TestRdmDriftCI:
 # Bio module tests
 # ============================================================================
 
+
 class TestPerturbationCoherenceCI:
     def test_returns_dict(self, bio_data):
         X_ctrl, X_pert = bio_data
@@ -250,6 +256,7 @@ class TestPerturbationEffectSizeCI:
 # ============================================================================
 # Sim module tests
 # ============================================================================
+
 
 class TestCkaLinearCI:
     def test_returns_dict(self, X, X2):
@@ -319,6 +326,7 @@ class TestSimRdmSimilarityCI:
 # ============================================================================
 # Edge cases
 # ============================================================================
+
 
 class TestEdgeCases:
     def test_n_bootstrap_ci_zero_returns_float(self, X):

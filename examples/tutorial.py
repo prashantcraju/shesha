@@ -101,10 +101,11 @@ plt.savefig('tutorial_feature_split.png', dpi=150)
 plt.show()
 
 # %% [markdown]
-# ## 3. Sample-Split Shesha (Bootstrap)
-# 
-# Measures robustness to sampling variation by computing RDMs on different 
-# random subsets of data points.
+# ## 3. Sample-Split Shesha (invalid estimand)
+#
+# Retained for compatibility only. ``sample_split`` correlates unmatched RDM
+# entries and must not be used for scientific inference. It emits a
+# ``FutureWarning`` and will be replaced in 0.3.0.
 
 # %%
 # Compare sample-split stability
@@ -115,10 +116,10 @@ print(f"Sample-split stability (structured): {sample_stability_structured:.3f}")
 print(f"Sample-split stability (random): {sample_stability_random:.3f}")
 
 # %% [markdown]
-# ## 4. Anchor Stability
-# 
-# Uses fixed anchor points to measure distance profile consistency. 
-# More robust for large datasets.
+# ## 4. Anchor Stability (invalid estimand)
+#
+# Retained for compatibility only. Corresponding probe columns are unmatched.
+# Do not use the outputs for inference. The function emits a ``FutureWarning``.
 
 # %%
 anchor_stability_structured = shesha.anchor_stability(X_structured, n_splits=30, seed=320)
@@ -303,9 +304,10 @@ print(f"  supervised:    {shesha.shesha(X, y, variant='supervised', seed=320):.3
 # ## 9. Tips and Best Practices
 # 
 # ### Choosing a variant:
-# - **feature_split**: Default choice for unsupervised analysis. Good for drift detection, intrinsic quality.
-# - **sample_split**: When you care about robustness to sampling. Good for small datasets.
-# - **anchor_stability**: For very large datasets where feature_split is slow.
+# - **feature_split**: Default choice for unsupervised analysis. Measures
+#   coordinate-axis redundancy, not basis-invariant geometry.
+# - **sample_split** / **anchor_stability**: Do not use for inference (invalid
+#   unmatched-sample estimands; see docs/guide/caveats.rst).
 # - **variance_ratio**: Quick supervised check. Computationally cheap.
 # - **supervised_alignment**: When you want RDM-based task alignment (more nuanced than variance_ratio).
 # 
@@ -326,8 +328,8 @@ print(f"  supervised:    {shesha.shesha(X, y, variant='supervised', seed=320):.3
 # | Variant | Supervised | Best For |
 # |---------|------------|----------|
 # | `feature_split` | No | General stability, drift detection |
-# | `sample_split` | No | Sampling robustness |
-# | `anchor_stability` | No | Large-scale analysis |
+# | `sample_split` | No | Compatibility only (invalid estimand) |
+# | `anchor_stability` | No | Compatibility only (invalid estimand) |
 # | `variance_ratio` | Yes | Quick separability check |
 # | `supervised_alignment` | Yes | Task alignment |
 
