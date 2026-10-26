@@ -54,7 +54,7 @@ class TestFeatureSplitProperties:
         s_conc = shesha.feature_split(concentrated, n_splits=40, seed=320)
         assert s_dist > s_conc
 
-    @pytest.mark.filterwarnings("ignore:Undefined distances were replaced:FutureWarning")
+    @pytest.mark.filterwarnings("ignore:Omitted .* undefined distance pair:UserWarning")
     def test_orthogonal_rotation_can_change_score(self):
         rng = np.random.default_rng(320)
         # Axis-aligned: each independent latent occupies a single coordinate.
@@ -65,8 +65,12 @@ class TestFeatureSplitProperties:
         X[:, :n_latent] = rng.standard_normal((n_samples, n_latent))
         Q = _random_orthogonal(n_features, seed=99)
         X_rot = X @ Q
-        s_axis = shesha.feature_split(X, n_splits=50, seed=320)
-        s_rot = shesha.feature_split(X_rot, n_splits=50, seed=320)
+        # Axis-aligned halves contain all-zero rows, so cosine distances are
+        # undefined and must be handled explicitly.
+        with pytest.raises(ValueError, match="Undefined distances"):
+            shesha.feature_split(X, n_splits=50, seed=320)
+        s_axis = shesha.feature_split(X, n_splits=50, seed=320, nan_policy="omit")
+        s_rot = shesha.feature_split(X_rot, n_splits=50, seed=320, nan_policy="omit")
         assert s_rot - s_axis > 0.4
         rdm = shesha.rdm_similarity(X, X_rot, metric="euclidean")
         assert rdm > 0.99
@@ -154,15 +158,14 @@ class TestRdmSemantics:
         assert sim_pos == pytest.approx(sim_kw, abs=1e-12)
         assert core_kw == pytest.approx(sim_kw, abs=1e-12)
 
-    def test_legacy_scipy_metric_warns_but_still_runs(self):
-        rng = np.random.default_rng(31)
-        X = rng.standard_normal((30, 8))
-        with pytest.warns(FutureWarning, match="0.2.x compatibility"):
-            rdm = shesha.compute_rdm(X, metric="cityblock")
-        assert rdm.shape == (435,)
-        with pytest.warns(FutureWarning, match="0.2.x compatibility"):
-            score = shesha.feature_split(X, n_splits=3, metric="cityblock", seed=1)
-        assert np.isfinite(score)
+    def test_undocumented_scipy_metric_rejected(self):
+        X = np.random.default_rng(31).standard_normal((30, 8))
+        with pytest.raises(ValueError, match="Unknown metric"):
+            shesha.compute_rdm(X, metric="cityblock")
+        with pytest.raises(ValueError, match="Unknown metric"):
+            shesha.feature_split(X, n_splits=3, metric="cityblock", seed=1)
+        with pytest.raises(ValueError, match="Unknown metric"):
+            shesha.rdm_similarity(X, X, metric="cityblock")
 
     def test_fewer_than_three_samples_returns_nan(self):
         X = np.random.randn(2, 8)
@@ -177,11 +180,27 @@ class TestRdmSemantics:
         with pytest.raises(ValueError, match="Undefined distances"):
             shesha.rdm_similarity(X, Y, metric="cosine", nan_policy="raise")
 
+    @pytest.mark.parametrize(
+        "call",
+        [
+            lambda X: shesha.compute_rdm(X),
+            lambda X: shesha.rdm_similarity(X, X),
+            lambda X: shesha.rdm_drift(X, X),
+            lambda X: sim.rdm_similarity(X, X),
+            lambda X: shesha.feature_split(X, n_splits=3, seed=1),
+        ],
+    )
+    def test_nan_policy_defaults_to_raise(self, call):
+        X = np.random.default_rng(2).standard_normal((30, 10))
+        X[0] = 0.0
+        with pytest.raises(ValueError, match="Undefined distances"):
+            call(X)
+
     def test_nan_policy_replace_warns(self):
         X = np.random.default_rng(2).standard_normal((30, 10))
         Y = X.copy()
         X[0] = 0.0
-        with pytest.warns(FutureWarning, match="nan_policy='replace'"):
+        with pytest.warns(UserWarning, match="nan_policy='replace'"):
             val = shesha.rdm_similarity(X, Y, metric="cosine", nan_policy="replace")
         assert isinstance(val, float)
 
@@ -290,5 +309,5 @@ class TestInputValidation:
             shesha.feature_split(X, n_splits=5, metric="manhattan")
 
 
-def test_replace_warning_message_mentions_03():
-    assert "0.3.0" in NAN_REPLACE_WARNING
+def test_replace_warning_message_names_alternatives():
+    assert "omit" in NAN_REPLACE_WARNING and "propagate" in NAN_REPLACE_WARNING

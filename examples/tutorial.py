@@ -4,7 +4,7 @@
 # This tutorial demonstrates how to use SHESHA (Self-consistency metrics for representational stability analysis) to measure geometric stability of high-dimensional representations.
 # 
 # **What you'll learn:**
-# 1. Basic usage of unsupervised variants (feature_split, sample_split, anchor_stability)
+# 1. Basic usage of unsupervised variants (feature_split, replicate_stability, anchor_profile_stability)
 # 2. Supervised variants with labels (variance_ratio, supervised_alignment)
 # 3. Practical applications: comparing models, detecting drift, analyzing embeddings
 
@@ -101,32 +101,45 @@ plt.savefig('tutorial_feature_split.png', dpi=150)
 plt.show()
 
 # %% [markdown]
-# ## 3. Sample-Split Shesha (invalid estimand)
+# ## 3. Matched-Replicate Stability
 #
-# Retained for compatibility only. ``sample_split`` correlates unmatched RDM
-# entries and must not be used for scientific inference. It emits a
-# ``FutureWarning`` and will be replaced in 0.3.0.
+# Whether geometry holds up across new measurements needs *matched* observations:
+# the same items measured twice (two sessions, two biological replicates, or two
+# models on a shared test set). ``replicate_stability`` correlates the RDMs of the
+# two replicates; row ``i`` must be the same item in both (or pass ``ids_a`` /
+# ``ids_b`` to align them). It replaces the deprecated ``sample_split``.
 
 # %%
-# Compare sample-split stability
-sample_stability_structured = shesha.sample_split(X_structured, n_splits=30, seed=320)
-sample_stability_random = shesha.sample_split(X_random, n_splits=30, seed=320)
+replicate_1 = X_structured + 6.0 * np.random.randn(*X_structured.shape)
+replicate_2 = X_structured + 6.0 * np.random.randn(*X_structured.shape)
 
-print(f"Sample-split stability (structured): {sample_stability_structured:.3f}")
-print(f"Sample-split stability (random): {sample_stability_random:.3f}")
+replicate_score = shesha.replicate_stability(replicate_1, replicate_2)
+print(f"Replicate stability (matched): {replicate_score:.3f}")
+
+# Misaligned rows compare different items and collapse toward zero
+shuffled = np.random.permutation(n_samples)
+print(f"Replicate stability (misaligned): "
+      f"{shesha.replicate_stability(replicate_1, replicate_2[shuffled]):.3f}")
+
+# Structured result: full-data estimate and a bootstrap data interval
+result = shesha.replicate_stability(
+    replicate_1, replicate_2, n_bootstrap_ci=200, seed=320, return_type="result"
+)
+print(f"  estimate {result.estimate:.3f}, 95% data CI "
+      f"[{result.data_ci_low:.3f}, {result.data_ci_high:.3f}]")
 
 # %% [markdown]
-# ## 4. Anchor Stability (invalid estimand)
+# ## 4. Anchor-Profile Stability
 #
-# Retained for compatibility only. Corresponding probe columns are unmatched.
-# Do not use the outputs for inference. The function emits a ``FutureWarning``.
+# ``anchor_profile_stability`` compares each anchor's distances to a shared set of
+# probe items across the two replicates. It replaces the deprecated
+# ``anchor_stability``.
 
 # %%
-anchor_stability_structured = shesha.anchor_stability(X_structured, n_splits=30, seed=320)
-anchor_stability_random = shesha.anchor_stability(X_random, n_splits=30, seed=320)
-
-print(f"Anchor stability (structured): {anchor_stability_structured:.3f}")
-print(f"Anchor stability (random): {anchor_stability_random:.3f}")
+anchor_score = shesha.anchor_profile_stability(
+    replicate_1, replicate_2, anchor_ids=np.arange(50)
+)
+print(f"Anchor-profile stability (matched): {anchor_score:.3f}")
 
 # %% [markdown]
 # ## 5. Supervised Variants
@@ -295,8 +308,6 @@ y = np.random.randint(0, 5, 500)
 # All variants through unified interface
 print("Unified interface examples:")
 print(f"  feature_split: {shesha.shesha(X, variant='feature_split', seed=320):.3f}")
-print(f"  sample_split:  {shesha.shesha(X, variant='sample_split', seed=320):.3f}")
-print(f"  anchor:        {shesha.shesha(X, variant='anchor', seed=320):.3f}")
 print(f"  variance:      {shesha.shesha(X, y, variant='variance'):.3f}")
 print(f"  supervised:    {shesha.shesha(X, y, variant='supervised', seed=320):.3f}")
 
@@ -306,8 +317,9 @@ print(f"  supervised:    {shesha.shesha(X, y, variant='supervised', seed=320):.3
 # ### Choosing a variant:
 # - **feature_split**: Default choice for unsupervised analysis. Measures
 #   coordinate-axis redundancy, not basis-invariant geometry.
-# - **sample_split** / **anchor_stability**: Do not use for inference (invalid
-#   unmatched-sample estimands; see docs/guide/caveats.rst).
+# - **replicate_stability** / **anchor_profile_stability**: When you have matched
+#   replicates of the same items. The deprecated **sample_split** /
+#   **anchor_stability** must not be used for inference (see docs/guide/caveats.rst).
 # - **variance_ratio**: Quick supervised check. Computationally cheap.
 # - **supervised_alignment**: When you want RDM-based task alignment (more nuanced than variance_ratio).
 # 
@@ -328,8 +340,9 @@ print(f"  supervised:    {shesha.shesha(X, y, variant='supervised', seed=320):.3
 # | Variant | Supervised | Best For |
 # |---------|------------|----------|
 # | `feature_split` | No | General stability, drift detection |
-# | `sample_split` | No | Compatibility only (invalid estimand) |
-# | `anchor_stability` | No | Compatibility only (invalid estimand) |
+# | `replicate_stability` | No | Matched replicates of the same items |
+# | `anchor_profile_stability` | No | Matched anchor-to-probe profiles |
+# | `sample_split` / `anchor_stability` | No | Deprecated (invalid estimand) |
 # | `variance_ratio` | Yes | Quick separability check |
 # | `supervised_alignment` | Yes | Task alignment |
 

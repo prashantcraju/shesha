@@ -113,8 +113,8 @@ Version is single-sourced from `pyproject.toml` (`shesha.__version__` and the Sp
 3. Create a signed tag matching the version, then push it:
 
 ```bash
-git tag -s v0.2.29 -m "shesha-geometry 0.2.29"
-git push origin v0.2.29
+git tag -s v0.3.0 -m "shesha-geometry 0.3.0"
+git push origin v0.3.0
 ```
 
 4. The `Publish` workflow verifies GitHub's tag signature, confirms the tagged commit is on `main`, checks that the tag matches the package version, builds and validates the sdist/wheel, publishes to PyPI via Trusted Publishing, and opens a GitHub Release. Configure the PyPI trusted publisher for this repository (environment name `pypi`) before the first automated upload.

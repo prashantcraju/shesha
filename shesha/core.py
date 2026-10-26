@@ -17,7 +17,19 @@ try:
 except ImportError:
     from typing_extensions import Literal
 
-from ._rdm import compute_rdm_impl, rdm_similarity_impl, validate_rdm_metric
+from ._rdm import (
+    compute_rdm_impl,
+    rdm_similarity_impl,
+    resampled_pair_index,
+    validate_rdm_metric,
+)
+from ._result import (
+    StabilityResult,
+    bootstrap_result,
+    bootstrap_summary,
+    result_metadata,
+    validate_return_type,
+)
 from ._utils import bootstrap_ci, bootstrap_ci_two_sample
 from ._validate import (
     apply_nan_policy,
@@ -29,25 +41,30 @@ from ._validate import (
     validate_metric,
     validate_nan_policy,
     validate_paired_samples,
+    validate_positive_float,
     validate_positive_int,
 )
+from .replicate import paired_rdm_result
 
 SAMPLE_SPLIT_WARNING = (
     "sample_split correlates unmatched RDM entries from independently drawn "
     "subsamples. Corresponding distances do not refer to the same observation "
-    "pairs, so the current estimand is not scientifically identifiable. Do not "
-    "use these outputs for scientific inference. shesha-geometry 0.3.0 will "
-    "replace this function with a matched-replicate API (replicate_stability)."
+    "pairs, so the estimand is not scientifically identifiable. Do not use these "
+    "outputs for scientific inference. Use shesha.replicate_stability with matched "
+    "replicates instead. sample_split is deprecated and will be removed in a "
+    "future release."
 )
 
 ANCHOR_STABILITY_WARNING = (
     "anchor_stability correlates flattened distance profiles whose columns "
     "refer to different probe observations. Rank-normalizing does not restore "
-    "correspondence, so the current estimand is not scientifically identifiable. "
-    "Do not use these outputs for scientific inference. shesha-geometry 0.3.0 "
-    "will replace this function with a matched-observation API "
-    "(anchor_profile_stability)."
+    "correspondence, so the estimand is not scientifically identifiable. Do not "
+    "use these outputs for scientific inference. Use "
+    "shesha.anchor_profile_stability with matched replicates instead. "
+    "anchor_stability is deprecated and will be removed in a future release."
 )
+
+NOT_CONVERGED_PREFIX = "feature_split did not reach"
 
 __all__ = [
     # Unsupervised variants
@@ -78,7 +95,7 @@ def compute_rdm(
     X: np.ndarray,
     metric: Literal["cosine", "correlation", "euclidean"] = "cosine",
     normalize: bool = True,
-    nan_policy: Literal["replace", "raise", "omit", "propagate"] = "replace",
+    nan_policy: Literal["raise", "omit", "propagate", "replace"] = "raise",
 ) -> np.ndarray:
     """
     Compute Representational Dissimilarity Matrix (RDM).
@@ -91,12 +108,11 @@ def compute_rdm(
         Distance metric: 'cosine', 'correlation', or 'euclidean'.
     normalize : bool
         If True and metric='cosine', L2-normalize rows before computing distances.
-    nan_policy : {'replace', 'raise', 'omit', 'propagate'}, default='replace'
+    nan_policy : {'raise', 'omit', 'propagate', 'replace'}, default='raise'
         How to handle undefined distances (for example cosine distance of a
-        zero vector). ``replace`` fills them with 1.0 for a consistent 0.2.29
-        RDM API. This changes the prior undefined-distance behavior of
-        ``compute_rdm``. The default will change to ``raise`` in 0.3.0.
-        ``omit`` raises if omission would break condensed-RDM indexing.
+        zero vector). ``propagate`` returns the RDM with NaN entries,
+        ``replace`` fills them with 1.0 and warns, and ``omit`` raises if
+        omission would break condensed-RDM indexing.
 
     Returns
     -------
@@ -120,8 +136,11 @@ def feature_split(
     n_bootstrap_ci: Optional[int] = None,
     ci: float = 0.95,
     return_all_splits: bool = False,
-    nan_policy: Literal["replace", "raise", "omit", "propagate"] = "replace",
-) -> Union[float, dict, List]:
+    nan_policy: Literal["raise", "omit", "propagate", "replace"] = "raise",
+    return_type: Literal["float", "result"] = "float",
+    target_mc_se: Optional[float] = None,
+    max_splits: Optional[int] = None,
+) -> Union[float, dict, StabilityResult, List]:
     """
     Feature-Split Shesha: measures coordinate-axis redundancy.
 
@@ -137,7 +156,8 @@ def feature_split(
         for batch evaluation. When a list is passed, returns a list of results
         in the same order.
     n_splits : int
-        Number of random feature partitions to average over.
+        Number of random feature partitions to average over. With
+        ``target_mc_se``, the minimum number of partitions.
     metric : str
         Distance metric for RDM computation.
     seed : int, optional
@@ -146,25 +166,48 @@ def feature_split(
         Subsample to this many samples if exceeded (for efficiency).
     n_bootstrap_ci : int, optional
         If provided, compute bootstrap confidence interval by resampling
-        the input data this many times (e.g. 1000 or 10000).
+        the input data this many times (e.g. 1000 or 10000). Combining it
+        with ``target_mc_se`` requires ``return_type='result'``.
     ci : float, default=0.95
         Confidence level for the interval (only used when n_bootstrap_ci is set).
     return_all_splits : bool, default=False
         If True, return a dict with the mean score and per-split correlation
         scores instead of only the mean score.
-    nan_policy : {'replace', 'raise', 'omit', 'propagate'}, default='replace'
-        How to handle undefined distances. ``replace`` fills them with 1.0
-        (0.2.29 default). The default will change to ``raise`` in 0.3.0.
+    nan_policy : {'raise', 'omit', 'propagate', 'replace'}, default='raise'
+        How to handle undefined distances (for example a feature half that is
+        all zeros for some sample under cosine distance). ``omit`` drops the
+        affected pairs per split, ``propagate`` makes the whole result NaN, and
+        ``replace`` fills them with 1.0 and warns.
+    return_type : {'float', 'result'}, default='float'
+        ``'result'`` returns a :class:`~shesha.StabilityResult` whose
+        ``estimate`` is the full-data score, with the partition standard
+        deviation, Monte Carlo standard error, per-split scores, and (when
+        ``n_bootstrap_ci`` is set) a data interval. That interval resamples
+        observations while holding the full-data feature partitions fixed,
+        and drops pairs that refer to the same observation twice.
+        ``return_all_splits`` is ignored for ``'result'``.
+    target_mc_se : float, optional
+        Convergence target. After ``n_splits`` partitions, keep drawing
+        partitions until the Monte Carlo standard error of the mean
+        (sample SD / sqrt(valid splits)) is at most ``target_mc_se`` or
+        ``max_splits`` is reached. A ``UserWarning`` (float return) or a
+        result warning and ``metadata['converged']`` report non-convergence.
+    max_splits : int, optional
+        Upper bound on partitions when ``target_mc_se`` is set. Defaults to
+        ``max(n_splits, 500)``.
 
     Returns
     -------
-    float or dict or list
+    float or dict or StabilityResult or list
         If X is a single array and n_bootstrap_ci is None: mean Spearman
         correlation in [-1, 1].
         If X is a single array and return_all_splits is True: dict with keys
         'mean' and 'split_scores'.
         If X is a single array and n_bootstrap_ci is set: dict with keys
-        'mean', 'ci_low', 'ci_high', 'std', 'n_bootstraps', 'ci_level'.
+        'mean', 'ci_low', 'ci_high', 'std', 'n_bootstraps', 'ci_level'. Here
+        'mean' is the mean of bootstrap replicates, not the full-data
+        estimate; use ``return_type='result'`` for the full-data estimate.
+        If return_type is 'result': a StabilityResult.
         If X is a list: list of the above, one entry per input matrix.
 
     Notes
@@ -197,6 +240,14 @@ def feature_split(
     >>> # Return per-split scores for distribution plots
     >>> result = feature_split(X, n_splits=30, seed=320, return_all_splits=True)
     >>> scores = result["split_scores"]
+
+    >>> # Structured result: full-data estimate with separated uncertainty
+    >>> result = feature_split(X, seed=320, n_bootstrap_ci=200, return_type="result")
+    >>> result.estimate, result.monte_carlo_se, result.data_ci_low, result.data_ci_high
+
+    >>> # Draw partitions until the Monte Carlo error is below 0.005
+    >>> result = feature_split(X, seed=320, target_mc_se=0.005, return_type="result")
+    >>> result.n_valid_splits, result.metadata["converged"]
     """
     options = {
         "n_splits": n_splits,
@@ -207,6 +258,9 @@ def feature_split(
         "ci": ci,
         "return_all_splits": return_all_splits,
         "nan_policy": nan_policy,
+        "return_type": return_type,
+        "target_mc_se": target_mc_se,
+        "max_splits": max_splits,
     }
     if isinstance(X, list):
         return [_feature_split_single(array, **options) for array in X]
@@ -223,7 +277,10 @@ def _feature_split_single(
     ci: float,
     return_all_splits: bool,
     nan_policy: str,
-) -> Union[float, dict]:
+    return_type: str,
+    target_mc_se: Optional[float],
+    max_splits: Optional[int],
+) -> Union[float, dict, StabilityResult]:
     """Validate and dispatch a single feature-split input."""
     validate_positive_int(n_splits, "n_splits")
     validate_rdm_metric(metric, ("cosine", "correlation"))
@@ -231,11 +288,24 @@ def _feature_split_single(
     validate_positive_int(n_bootstrap_ci, "n_bootstrap_ci", allow_none=True)
     validate_ci(ci)
     validate_nan_policy(nan_policy)
+    validate_return_type(return_type)
+    convergence = _validate_convergence(n_splits, target_mc_se, max_splits)
+
+    X = as_2d_array(X, "X")
+
+    if return_type == "result":
+        return _feature_split_stability_result(
+            X, n_splits, metric, seed, max_samples, n_bootstrap_ci, ci, nan_policy, convergence
+        )
+    if convergence is not None:
+        if n_bootstrap_ci is not None:
+            raise ValueError("target_mc_se with n_bootstrap_ci requires return_type='result'.")
+        return _feature_split_converged_float(
+            X, n_splits, metric, seed, max_samples, nan_policy, convergence, return_all_splits
+        )
 
     if n_bootstrap_ci is not None and return_all_splits:
         raise ValueError("return_all_splits cannot be used with n_bootstrap_ci.")
-
-    X = as_2d_array(X, "X")
 
     if n_bootstrap_ci is not None:
         return bootstrap_ci(
@@ -276,14 +346,78 @@ def _feature_split_point_estimate(
 
     rng = np.random.default_rng(seed)
     X = _prepare_feature_split_data(X, metric, max_samples, rng)
-    correlations = []
-    for _ in range(n_splits):
-        score, should_propagate = _score_feature_partition(X, metric, nan_policy, rng)
+    _, correlations, propagated = _run_feature_partitions(X, metric, nan_policy, rng, n_splits)
+    return _feature_split_result([] if propagated else correlations, return_all_splits)
+
+
+def _validate_convergence(
+    n_splits: int, target_mc_se: Optional[float], max_splits: Optional[int]
+) -> Optional[tuple]:
+    """Return ``(target_mc_se, max_splits)`` or None when convergence is off."""
+    if target_mc_se is None:
+        if max_splits is not None:
+            raise ValueError("max_splits requires target_mc_se")
+        return None
+    validate_positive_float(target_mc_se, "target_mc_se")
+    validate_positive_int(max_splits, "max_splits", allow_none=True)
+    if max_splits is None:
+        max_splits = max(n_splits, 500)
+    if max_splits < n_splits:
+        raise ValueError(f"max_splits ({max_splits}) must be >= n_splits ({n_splits})")
+    return float(target_mc_se), int(max_splits)
+
+
+def _monte_carlo_se(scores: List[float]) -> float:
+    if len(scores) < 2:
+        return np.nan
+    return float(np.std(scores, ddof=1) / np.sqrt(len(scores)))
+
+
+def _run_feature_partitions(
+    X: np.ndarray,
+    metric: str,
+    nan_policy: str,
+    rng: np.random.Generator,
+    n_splits: int,
+    convergence: Optional[tuple] = None,
+) -> tuple:
+    """
+    Draw and score random feature partitions.
+
+    Returns ``(partitions, scores, propagated)``. Without ``convergence``
+    exactly ``n_splits`` partitions are drawn; otherwise drawing continues
+    past ``n_splits`` until the Monte Carlo SE reaches the target or the
+    partition limit is hit.
+    """
+    target, limit = convergence if convergence is not None else (None, n_splits)
+    partitions, scores = [], []
+    while len(partitions) < limit:
+        first, second = _draw_feature_partition(X.shape[1], rng)
+        partitions.append((first, second))
+        score, should_propagate = _score_rdm_pair(
+            pdist(X[:, first], metric=metric), pdist(X[:, second], metric=metric), nan_policy
+        )
         if should_propagate:
-            return _feature_split_result([], return_all_splits)
+            return partitions, scores, True
         if score is not None:
-            correlations.append(score)
-    return _feature_split_result(correlations, return_all_splits)
+            scores.append(score)
+        if target is not None and len(partitions) >= n_splits:
+            if _monte_carlo_se(scores) <= target:
+                break
+    return partitions, scores, False
+
+
+def _feature_split_converged_float(
+    X, n_splits, metric, seed, max_samples, nan_policy, convergence, return_all_splits
+):
+    """Float/dict return for convergence-based feature splits."""
+    result = _feature_split_stability_result(
+        X, n_splits, metric, seed, max_samples, None, 0.95, nan_policy, convergence
+    )
+    for note in result.warnings:
+        if note.startswith(NOT_CONVERGED_PREFIX):
+            warnings.warn(note, UserWarning, stacklevel=4)
+    return _feature_split_result(list(result.component_scores), return_all_splits)
 
 
 def _prepare_feature_split_data(
@@ -301,21 +435,16 @@ def _prepare_feature_split_data(
     return X
 
 
-def _score_feature_partition(
-    X: np.ndarray,
-    metric: str,
-    nan_policy: str,
-    rng: np.random.Generator,
-) -> tuple:
-    """Score one random feature partition and report NaN propagation."""
-    permutation = rng.permutation(X.shape[1])
-    midpoint = X.shape[1] // 2
-    first, second = permutation[:midpoint], permutation[midpoint : 2 * midpoint]
-    rdms = apply_nan_policy(
-        pdist(X[:, first], metric=metric),
-        pdist(X[:, second], metric=metric),
-        nan_policy=nan_policy,
-    )
+def _draw_feature_partition(n_features: int, rng: np.random.Generator) -> tuple:
+    """Draw two disjoint, equal-size random feature halves."""
+    permutation = rng.permutation(n_features)
+    midpoint = n_features // 2
+    return permutation[:midpoint], permutation[midpoint : 2 * midpoint]
+
+
+def _score_rdm_pair(rdm1: np.ndarray, rdm2: np.ndarray, nan_policy: str) -> tuple:
+    """Spearman correlation of two aligned RDMs, or ``(None, propagate)``."""
+    rdms = apply_nan_policy(rdm1, rdm2, nan_policy=nan_policy)
     if rdms is None:
         return None, True
     rdm1, rdm2 = rdms
@@ -336,6 +465,143 @@ def _feature_split_result(correlations: List[float], return_all_splits: bool):
     return mean_score
 
 
+def _score_feature_partitions(
+    X: np.ndarray,
+    partitions: list,
+    metric: str,
+    nan_policy: str,
+    rows: Optional[np.ndarray] = None,
+    pairs: Optional[tuple] = None,
+) -> tuple:
+    """
+    Score fixed feature partitions on ``X`` or on a bootstrap resample of it.
+
+    ``rows`` are resampled row indices; distances are computed once per unique
+    row and pairs that refer to the same row twice are dropped.
+    """
+    pair_index = None
+    if rows is not None:
+        unique, inverse = np.unique(rows, return_inverse=True)
+        X = X[unique]
+        pair_index = resampled_pair_index(inverse, unique.size, pairs)
+    scores = []
+    for first, second in partitions:
+        rdm1 = pdist(X[:, first], metric=metric)
+        rdm2 = pdist(X[:, second], metric=metric)
+        if pair_index is not None:
+            rdm1, rdm2 = rdm1[pair_index], rdm2[pair_index]
+        score, should_propagate = _score_rdm_pair(rdm1, rdm2, nan_policy)
+        if should_propagate:
+            return scores, True
+        if score is not None:
+            scores.append(score)
+    return scores, False
+
+
+def _feature_split_stability_result(
+    X: np.ndarray,
+    n_splits: int,
+    metric: str,
+    seed: Optional[int],
+    max_samples: Optional[int],
+    n_bootstrap_ci: Optional[int],
+    ci: float,
+    nan_policy: str,
+    convergence: Optional[tuple] = None,
+) -> StabilityResult:
+    """Feature-split estimate with partition and dataset uncertainty separated."""
+    metadata = result_metadata(
+        "feature_split",
+        metric=metric,
+        nan_policy=nan_policy,
+        seed=seed,
+        n_splits=n_splits,
+        max_samples=max_samples,
+        n_samples=X.shape[0],
+        n_features=X.shape[1],
+        bootstrap_unit="observations (feature partitions held fixed)",
+    )
+    if convergence is not None:
+        metadata["target_mc_se"], metadata["max_splits"] = convergence
+    if X.shape[0] < 4 or X.shape[1] < 4:
+        return StabilityResult(
+            estimate=np.nan,
+            warnings=("feature_split requires at least 4 samples and 4 features.",),
+            metadata=metadata,
+        )
+
+    rng = np.random.default_rng(seed)
+    X = _prepare_feature_split_data(X, metric, max_samples, rng)
+    metadata["n_samples_used"] = X.shape[0]
+    partitions, scores, propagated = _run_feature_partitions(
+        X, metric, nan_policy, rng, n_splits, convergence
+    )
+    metadata["n_partitions_drawn"] = len(partitions)
+    if propagated:
+        return StabilityResult(
+            estimate=np.nan,
+            warnings=("Undefined distances propagated to the result (nan_policy='propagate').",),
+            metadata=metadata,
+        )
+
+    boot_scores = []
+    if n_bootstrap_ci is not None:
+        boot_scores = _bootstrap_feature_split(
+            X, partitions, metric, nan_policy, n_bootstrap_ci, seed
+        )
+    ci_low, ci_high, ci_level, boot_notes = bootstrap_summary(boot_scores, n_bootstrap_ci, ci)
+    partition_sd = float(np.std(scores, ddof=1)) if len(scores) >= 2 else np.nan
+    return StabilityResult(
+        estimate=float(np.mean(scores)) if scores else np.nan,
+        data_ci_low=ci_low,
+        data_ci_high=ci_high,
+        ci_level=ci_level,
+        partition_sd=partition_sd,
+        monte_carlo_se=_monte_carlo_se(scores),
+        n_valid_splits=len(scores),
+        n_bootstraps=len(boot_scores),
+        component_scores=tuple(float(score) for score in scores),
+        warnings=_partition_notes(scores, len(partitions), convergence, metadata) + boot_notes,
+        metadata=metadata,
+    )
+
+
+def _partition_notes(scores, n_drawn, convergence, metadata) -> tuple:
+    """Warnings for skipped partitions and convergence; records ``converged``."""
+    notes = ()
+    if len(scores) < n_drawn:
+        notes += (
+            f"{n_drawn - len(scores)} of {n_drawn} feature partitions were "
+            "unestimable and skipped.",
+        )
+    if convergence is not None:
+        target, limit = convergence
+        mc_se = _monte_carlo_se(scores)
+        metadata["converged"] = bool(mc_se <= target)
+        if not metadata["converged"]:
+            notes += (
+                f"{NOT_CONVERGED_PREFIX} target_mc_se={target:g} after {n_drawn} "
+                f"partitions (max_splits={limit}); Monte Carlo SE is {mc_se:.4g}.",
+            )
+    return notes
+
+
+def _bootstrap_feature_split(X, partitions, metric, nan_policy, n_bootstrap, seed):
+    """Observation bootstrap conditional on the full-data feature partitions."""
+    rng = np.random.default_rng(np.random.SeedSequence(seed).spawn(1)[0])
+    n_samples = X.shape[0]
+    pairs = np.triu_indices(n_samples, k=1)
+    boot_scores = []
+    for _ in range(n_bootstrap):
+        rows = rng.choice(n_samples, n_samples, replace=True)
+        scores, propagated = _score_feature_partitions(
+            X, partitions, metric, nan_policy, rows=rows, pairs=pairs
+        )
+        if scores and not propagated:
+            boot_scores.append(float(np.mean(scores)))
+    return boot_scores
+
+
 def sample_split(
     X: np.ndarray,
     n_splits: int = 30,
@@ -346,17 +612,19 @@ def sample_split(
     n_bootstrap_ci: Optional[int] = None,
     ci: float = 0.95,
     return_all_splits: bool = False,
-    nan_policy: Literal["replace", "raise", "omit", "propagate"] = "replace",
+    nan_policy: Literal["raise", "omit", "propagate", "replace"] = "raise",
 ) -> Union[float, dict]:
     """
-    Sample-Split Shesha (invalid estimand; retained for compatibility).
+    Sample-Split Shesha (deprecated; invalid estimand).
+
+    .. deprecated:: 0.3.0
+       Use :func:`shesha.replicate_stability` with matched replicates.
+       ``sample_split`` will be removed in a future release.
 
     .. warning::
        This function correlates unmatched RDM entries from independently drawn
        subsamples. Corresponding distances do **not** refer to the same
-       observation pairs. Current outputs must not be used for scientific
-       inference. shesha-geometry 0.3.0 will replace this API with a
-       matched-replicate estimator.
+       observation pairs. Outputs must not be used for scientific inference.
 
     The finite-distance algorithm is unchanged from earlier 0.2.x releases.
     Undefined distances now follow ``nan_policy``.
@@ -384,9 +652,10 @@ def sample_split(
     return_all_splits : bool, default=False
         If True, return a dict with the mean score and per-split correlation
         scores instead of only the mean score.
-    nan_policy : {'replace', 'raise', 'omit', 'propagate'}, default='replace'
-        How to handle undefined distances. The default will change to
-        ``raise`` in 0.3.0.
+    nan_policy : {'raise', 'omit', 'propagate', 'replace'}, default='raise'
+        How to handle undefined distances. ``omit`` drops pairs undefined in
+        either RDM, ``propagate`` returns NaN, and ``replace`` fills them with
+        1.0 and warns.
 
     Returns
     -------
@@ -517,17 +786,20 @@ def anchor_stability(
     max_samples: Optional[int] = 1500,
     n_bootstrap_ci: Optional[int] = None,
     ci: float = 0.95,
-    nan_policy: Literal["replace", "raise", "omit", "propagate"] = "replace",
+    nan_policy: Literal["raise", "omit", "propagate", "replace"] = "raise",
 ) -> Union[float, dict]:
     """
-    Anchor-based Shesha (invalid estimand; retained for compatibility).
+    Anchor-based Shesha (deprecated; invalid estimand).
+
+    .. deprecated:: 0.3.0
+       Use :func:`shesha.anchor_profile_stability` with matched replicates.
+       ``anchor_stability`` will be removed in a future release.
 
     .. warning::
        This function correlates flattened distance profiles whose columns
        refer to different probe observations. Rank-normalizing does not
-       restore correspondence. Current outputs must not be used for
-       scientific inference. shesha-geometry 0.3.0 will replace this API
-       with a matched-observation estimator.
+       restore correspondence. Outputs must not be used for scientific
+       inference.
 
     The finite-distance algorithm is unchanged from earlier 0.2.x releases.
     Undefined distances now follow ``nan_policy``.
@@ -556,9 +828,10 @@ def anchor_stability(
         estimator inherit the same invalid estimand.
     ci : float, default=0.95
         Confidence level for the interval.
-    nan_policy : {'replace', 'raise', 'omit', 'propagate'}, default='replace'
-        How to handle undefined distances. The default will change to
-        ``raise`` in 0.3.0.
+    nan_policy : {'raise', 'omit', 'propagate', 'replace'}, default='raise'
+        How to handle undefined distances. ``omit`` drops pairs undefined in
+        either RDM, ``propagate`` returns NaN, and ``replace`` fills them with
+        1.0 and warns.
 
     Returns
     -------
@@ -631,18 +904,10 @@ def _anchor_stability_impl(
         X = X[idx]
         n_samples = max_samples
 
-    # Need enough samples for anchors + two splits
-    min_required = n_anchors + 2 * n_per_split
-    if n_samples < min_required:
-        # Reduce sizes proportionally
-        scale = n_samples / min_required * 0.9
-        n_anchors = max(10, int(n_anchors * scale))
-        n_per_split = max(20, int(n_per_split * scale))
-
+    n_anchors, n_per_split = _legacy_anchor_sizes(n_samples, n_anchors, n_per_split)
     if n_samples < n_anchors + 2 * n_per_split:
         return np.nan
 
-    # Select fixed anchors
     anchor_idx = rng.choice(n_samples, n_anchors, replace=False)
     anchors = X[anchor_idx]
     remaining_idx = np.setdiff1d(np.arange(n_samples), anchor_idx)
@@ -651,48 +916,58 @@ def _anchor_stability_impl(
         return np.nan
 
     correlations = []
-
     for _ in range(n_splits):
-        # Two disjoint splits from remaining samples
         perm = rng.permutation(remaining_idx)
-        split1_idx = perm[:n_per_split]
-        split2_idx = perm[n_per_split : 2 * n_per_split]
-
-        # Distance matrices: anchors x split_samples
-        D1 = cdist(anchors, X[split1_idx], metric=metric)
-        D2 = cdist(anchors, X[split2_idx], metric=metric)
-
-        if rank_normalize and nan_policy == "omit":
-            ranked1 = np.full_like(D1, np.nan)
-            ranked2 = np.full_like(D2, np.nan)
-            for row in range(D1.shape[0]):
-                valid = np.isfinite(D1[row]) & np.isfinite(D2[row])
-                ranked1[row, valid] = rankdata(D1[row, valid])
-                ranked2[row, valid] = rankdata(D2[row, valid])
-            D1, D2 = ranked1, ranked2
-
-        handled = apply_nan_policy(D1.ravel(), D2.ravel(), nan_policy=nan_policy)
-        if handled is None:
+        D1 = cdist(anchors, X[perm[:n_per_split]], metric=metric)
+        D2 = cdist(anchors, X[perm[n_per_split : 2 * n_per_split]], metric=metric)
+        rho, should_propagate = _score_legacy_anchor_split(D1, D2, rank_normalize, nan_policy)
+        if should_propagate:
             return np.nan
-        if handled[0].shape != D1.ravel().shape:
-            # Omission retains the within-anchor ranking performed above.
-            rho, _ = spearmanr(handled[0], handled[1])
-            if np.isfinite(rho):
-                correlations.append(rho)
-            continue
-        D1 = handled[0].reshape(D1.shape)
-        D2 = handled[1].reshape(D2.shape)
-
-        if rank_normalize:
-            D1 = np.apply_along_axis(rankdata, 1, D1)
-            D2 = np.apply_along_axis(rankdata, 1, D2)
-
-        # Flatten and correlate
-        rho, _ = spearmanr(D1.ravel(), D2.ravel())
-        if np.isfinite(rho):
+        if rho is not None:
             correlations.append(rho)
 
     return float(np.mean(correlations)) if correlations else np.nan
+
+
+def _legacy_anchor_sizes(n_samples: int, n_anchors: int, n_per_split: int) -> tuple:
+    """Shrink anchor and split sizes proportionally when samples are scarce."""
+    min_required = n_anchors + 2 * n_per_split
+    if n_samples < min_required:
+        scale = n_samples / min_required * 0.9
+        n_anchors = max(10, int(n_anchors * scale))
+        n_per_split = max(20, int(n_per_split * scale))
+    return n_anchors, n_per_split
+
+
+def _score_legacy_anchor_split(
+    D1: np.ndarray, D2: np.ndarray, rank_normalize: bool, nan_policy: str
+) -> tuple:
+    """Correlate two anchor-to-probe distance matrices, or ``(None, propagate)``."""
+    if rank_normalize and nan_policy == "omit":
+        ranked1 = np.full_like(D1, np.nan)
+        ranked2 = np.full_like(D2, np.nan)
+        for row in range(D1.shape[0]):
+            valid = np.isfinite(D1[row]) & np.isfinite(D2[row])
+            ranked1[row, valid] = rankdata(D1[row, valid])
+            ranked2[row, valid] = rankdata(D2[row, valid])
+        D1, D2 = ranked1, ranked2
+
+    handled = apply_nan_policy(D1.ravel(), D2.ravel(), nan_policy=nan_policy)
+    if handled is None:
+        return None, True
+    if handled[0].shape != D1.ravel().shape:
+        # Omission retains the within-anchor ranking performed above.
+        rho, _ = spearmanr(handled[0], handled[1])
+        return (rho, False) if np.isfinite(rho) else (None, False)
+    D1 = handled[0].reshape(D1.shape)
+    D2 = handled[1].reshape(D2.shape)
+
+    if rank_normalize:
+        D1 = np.apply_along_axis(rankdata, 1, D1)
+        D2 = np.apply_along_axis(rankdata, 1, D2)
+
+    rho, _ = spearmanr(D1.ravel(), D2.ravel())
+    return (rho, False) if np.isfinite(rho) else (None, False)
 
 
 # =============================================================================
@@ -706,7 +981,8 @@ def variance_ratio(
     n_bootstrap_ci: Optional[int] = None,
     ci: float = 0.95,
     seed: Optional[int] = None,
-) -> Union[float, dict]:
+    return_type: Literal["float", "result"] = "float",
+) -> Union[float, dict, StabilityResult]:
     """
     Variance Ratio Shesha: ratio of between-class to total variance.
 
@@ -727,6 +1003,10 @@ def variance_ratio(
         Confidence level for the interval.
     seed : int, optional
         Random seed for bootstrap reproducibility.
+    return_type : {'float', 'result'}, default='float'
+        ``'result'`` returns a :class:`~shesha.StabilityResult` with the
+        full-data ``estimate`` and, when ``n_bootstrap_ci`` is set, its data
+        interval.
 
     Returns
     -------
@@ -741,6 +1021,22 @@ def variance_ratio(
     >>> y = np.random.randint(0, 10, 500)
     >>> vr = variance_ratio(X, y)
     """
+    validate_return_type(return_type)
+    if return_type == "result":
+        return bootstrap_result(
+            variance_ratio,
+            "variance_ratio",
+            (
+                X,
+                y,
+            ),
+            {"seed": seed},
+            n_bootstrap_ci,
+            ci,
+            bootstrap_unit="observations (rows of X and y resampled together)",
+            monte_carlo_se=0.0,
+        )
+
     validate_positive_int(n_bootstrap_ci, "n_bootstrap_ci", allow_none=True)
     validate_ci(ci)
     X = as_2d_array(X, "X")
@@ -786,7 +1082,8 @@ def supervised_alignment(
     max_samples: int = 300,
     n_bootstrap_ci: Optional[int] = None,
     ci: float = 0.95,
-) -> Union[float, dict]:
+    return_type: Literal["float", "result"] = "float",
+) -> Union[float, dict, StabilityResult]:
     """
     Supervised RDM Alignment: correlation between model RDM and ideal label RDM.
 
@@ -810,6 +1107,10 @@ def supervised_alignment(
         the input data this many times.
     ci : float, default=0.95
         Confidence level for the interval.
+    return_type : {'float', 'result'}, default='float'
+        ``'result'`` returns a :class:`~shesha.StabilityResult` with the
+        full-data ``estimate`` and, when ``n_bootstrap_ci`` is set, its data
+        interval.
 
     Returns
     -------
@@ -818,6 +1119,22 @@ def supervised_alignment(
         If n_bootstrap_ci is set: dict with keys 'mean', 'ci_low', 'ci_high',
         'std', 'n_bootstraps', 'ci_level'.
     """
+    validate_return_type(return_type)
+    if return_type == "result":
+        return bootstrap_result(
+            supervised_alignment,
+            "supervised_alignment",
+            (
+                X,
+                y,
+            ),
+            {"metric": metric, "seed": seed, "max_samples": max_samples},
+            n_bootstrap_ci,
+            ci,
+            bootstrap_unit="observations (rows of X and y resampled together)",
+            monte_carlo_se=0.0 if len(X) <= max_samples else np.nan,
+        )
+
     validate_metric(metric, ("cosine", "correlation"))
     validate_positive_int(max_samples, "max_samples")
     validate_positive_int(n_bootstrap_ci, "n_bootstrap_ci", allow_none=True)
@@ -871,7 +1188,8 @@ def class_separation_ratio(
     seed: Optional[int] = None,
     n_bootstrap_ci: Optional[int] = None,
     ci: float = 0.95,
-) -> Union[float, dict]:
+    return_type: Literal["float", "result"] = "float",
+) -> Union[float, dict, StabilityResult]:
     """
     Class Separation Ratio: ratio of between-class to within-class distances.
 
@@ -898,6 +1216,10 @@ def class_separation_ratio(
         the input data this many times.
     ci : float, default=0.95
         Confidence level for the interval.
+    return_type : {'float', 'result'}, default='float'
+        ``'result'`` returns a :class:`~shesha.StabilityResult` with the
+        full-data ``estimate`` and, when ``n_bootstrap_ci`` is set, its data
+        interval.
 
     Returns
     -------
@@ -920,6 +1242,27 @@ def class_separation_ratio(
     Higher values indicate representations where same-class samples are closer
     together than different-class samples, suggesting good discriminability.
     """
+    validate_return_type(return_type)
+    if return_type == "result":
+        return bootstrap_result(
+            class_separation_ratio,
+            "class_separation_ratio",
+            (
+                X,
+                y,
+            ),
+            {
+                "n_bootstrap": n_bootstrap,
+                "subsample_frac": subsample_frac,
+                "metric": metric,
+                "seed": seed,
+            },
+            n_bootstrap_ci,
+            ci,
+            bootstrap_unit="observations (rows of X and y resampled together)",
+            monte_carlo_se=np.nan,
+        )
+
     validate_positive_int(n_bootstrap, "n_bootstrap")
     validate_fraction(subsample_frac, "subsample_frac")
     validate_metric(metric, ("cosine", "euclidean"))
@@ -958,47 +1301,41 @@ def class_separation_ratio(
     n_samples = int(len(X) * subsample_frac)
 
     for _ in range(n_bootstrap):
-        # Subsample
         idx = rng.choice(len(X), n_samples, replace=False)
-        X_sub, y_sub = X[idx], y[idx]
-
-        # Skip if any class is missing
-        if len(np.unique(y_sub)) < 2:
-            continue
-
-        # Compute pairwise distances
-        dists = cdist(X_sub, X_sub, metric="euclidean" if metric == "euclidean" else "cosine")
-
-        # Within-class distances (same label)
-        within_dists = []
-        for label in np.unique(y_sub):
-            mask = y_sub == label
-            if np.sum(mask) < 2:
-                continue
-            class_dists = dists[mask][:, mask]
-            # Upper triangle only (avoid diagonal)
-            within_dists.extend(class_dists[np.triu_indices_from(class_dists, k=1)])
-
-        # Between-class distances (different labels)
-        between_dists = []
-        for i, label_i in enumerate(np.unique(y_sub)):
-            for label_j in np.unique(y_sub):
-                if label_i >= label_j:
-                    continue
-                mask_i = y_sub == label_i
-                mask_j = y_sub == label_j
-                between_dists.extend(dists[mask_i][:, mask_j].flatten())
-
-        if len(within_dists) == 0 or len(between_dists) == 0:
-            continue
-
-        mean_between = np.mean(between_dists)
-        mean_within = np.mean(within_dists)
-
-        if mean_within > EPS:
-            ratios.append(mean_between / mean_within)
+        ratio = _class_separation_once(X[idx], y[idx], metric)
+        if ratio is not None:
+            ratios.append(ratio)
 
     return float(np.mean(ratios)) if len(ratios) > 0 else np.nan
+
+
+def _class_separation_once(X_sub: np.ndarray, y_sub: np.ndarray, metric: str) -> Optional[float]:
+    """Mean between-class over mean within-class distance for one subsample."""
+    labels = np.unique(y_sub)
+    if len(labels) < 2:
+        return None
+
+    dists = cdist(X_sub, X_sub, metric="euclidean" if metric == "euclidean" else "cosine")
+    masks = [y_sub == label for label in labels]
+
+    within_dists = []
+    for mask in masks:
+        if np.sum(mask) < 2:
+            continue
+        class_dists = dists[mask][:, mask]
+        within_dists.extend(class_dists[np.triu_indices_from(class_dists, k=1)])
+
+    between_dists = []
+    for i, mask_i in enumerate(masks):
+        for mask_j in masks[i + 1 :]:
+            between_dists.extend(dists[mask_i][:, mask_j].flatten())
+
+    if len(within_dists) == 0 or len(between_dists) == 0:
+        return None
+    mean_within = np.mean(within_dists)
+    if mean_within <= EPS:
+        return None
+    return np.mean(between_dists) / mean_within
 
 
 def lda_stability(
@@ -1009,7 +1346,8 @@ def lda_stability(
     seed: Optional[int] = None,
     n_bootstrap_ci: Optional[int] = None,
     ci: float = 0.95,
-) -> Union[float, dict]:
+    return_type: Literal["float", "result"] = "float",
+) -> Union[float, dict, StabilityResult]:
     """
     LDA Subspace Stability: consistency of linear discriminant direction.
 
@@ -1034,6 +1372,10 @@ def lda_stability(
         the input data this many times.
     ci : float, default=0.95
         Confidence level for the interval.
+    return_type : {'float', 'result'}, default='float'
+        ``'result'`` returns a :class:`~shesha.StabilityResult` with the
+        full-data ``estimate`` and, when ``n_bootstrap_ci`` is set, its data
+        interval.
 
     Returns
     -------
@@ -1060,6 +1402,22 @@ def lda_stability(
     Only works for binary classification. For multi-class, consider using
     class_separation_ratio instead.
     """
+    validate_return_type(return_type)
+    if return_type == "result":
+        return bootstrap_result(
+            lda_stability,
+            "lda_stability",
+            (
+                X,
+                y,
+            ),
+            {"n_bootstrap": n_bootstrap, "subsample_frac": subsample_frac, "seed": seed},
+            n_bootstrap_ci,
+            ci,
+            bootstrap_unit="observations (rows of X and y resampled together)",
+            monte_carlo_se=np.nan,
+        )
+
     validate_positive_int(n_bootstrap, "n_bootstrap")
     validate_fraction(subsample_frac, "subsample_frac")
     validate_positive_int(n_bootstrap_ci, "n_bootstrap_ci", allow_none=True)
@@ -1159,8 +1517,9 @@ def rdm_similarity(
     n_bootstrap_ci: Optional[int] = None,
     ci: float = 0.95,
     seed: Optional[int] = None,
-    nan_policy: Literal["replace", "raise", "omit", "propagate"] = "replace",
-) -> Union[float, dict]:
+    nan_policy: Literal["raise", "omit", "propagate", "replace"] = "raise",
+    return_type: Literal["float", "result"] = "float",
+) -> Union[float, dict, StabilityResult]:
     """
     Compute RDM similarity between two representations.
 
@@ -1186,9 +1545,15 @@ def rdm_similarity(
         Confidence level for the interval.
     seed : int, optional
         Random seed for bootstrap reproducibility.
-    nan_policy : {'replace', 'raise', 'omit', 'propagate'}, default='replace'
-        How to handle undefined distances. The default will change to
-        ``raise`` in 0.3.0.
+    nan_policy : {'raise', 'omit', 'propagate', 'replace'}, default='raise'
+        How to handle undefined distances. ``omit`` drops pairs undefined in
+        either RDM, ``propagate`` returns NaN, and ``replace`` fills them with
+        1.0 and warns.
+    return_type : {'float', 'result'}, default='float'
+        ``'result'`` returns a :class:`~shesha.StabilityResult` with the
+        full-data ``estimate`` and, when ``n_bootstrap_ci`` is set, a data
+        interval from an observation bootstrap that drops pairs referring
+        to the same observation twice.
 
     Returns
     -------
@@ -1225,6 +1590,23 @@ def rdm_similarity(
     Y = as_2d_array(Y, "Y")
     validate_paired_samples(X, Y)
 
+    validate_return_type(return_type)
+    if return_type == "result":
+        estimate = rdm_similarity(X, Y, method=method, metric=metric, nan_policy=nan_policy)
+        return paired_rdm_result(
+            "rdm_similarity",
+            estimate,
+            X,
+            Y,
+            metric=metric,
+            method=method,
+            nan_policy=nan_policy,
+            n_bootstrap_ci=n_bootstrap_ci,
+            ci=ci,
+            seed=seed,
+            drift=False,
+        )
+
     if n_bootstrap_ci is not None:
         return bootstrap_ci_two_sample(
             rdm_similarity,
@@ -1248,8 +1630,9 @@ def rdm_drift(
     n_bootstrap_ci: Optional[int] = None,
     ci: float = 0.95,
     seed: Optional[int] = None,
-    nan_policy: Literal["replace", "raise", "omit", "propagate"] = "replace",
-) -> Union[float, dict]:
+    nan_policy: Literal["raise", "omit", "propagate", "replace"] = "raise",
+    return_type: Literal["float", "result"] = "float",
+) -> Union[float, dict, StabilityResult]:
     """
     Compute representational drift between two representations.
 
@@ -1276,9 +1659,15 @@ def rdm_drift(
         Confidence level for the interval.
     seed : int, optional
         Random seed for bootstrap reproducibility.
-    nan_policy : {'replace', 'raise', 'omit', 'propagate'}, default='replace'
-        How to handle undefined distances. The default will change to
-        ``raise`` in 0.3.0.
+    nan_policy : {'raise', 'omit', 'propagate', 'replace'}, default='raise'
+        How to handle undefined distances. ``omit`` drops pairs undefined in
+        either RDM, ``propagate`` returns NaN, and ``replace`` fills them with
+        1.0 and warns.
+    return_type : {'float', 'result'}, default='float'
+        ``'result'`` returns a :class:`~shesha.StabilityResult` with the
+        full-data ``estimate`` and, when ``n_bootstrap_ci`` is set, a data
+        interval from an observation bootstrap that drops pairs referring
+        to the same observation twice.
 
     Returns
     -------
@@ -1312,6 +1701,23 @@ def rdm_drift(
     X = as_2d_array(X, "X")
     Y = as_2d_array(Y, "Y")
     validate_paired_samples(X, Y)
+
+    validate_return_type(return_type)
+    if return_type == "result":
+        estimate = rdm_drift(X, Y, method=method, metric=metric, nan_policy=nan_policy)
+        return paired_rdm_result(
+            "rdm_drift",
+            estimate,
+            X,
+            Y,
+            metric=metric,
+            method=method,
+            nan_policy=nan_policy,
+            n_bootstrap_ci=n_bootstrap_ci,
+            ci=ci,
+            seed=seed,
+            drift=True,
+        )
 
     if n_bootstrap_ci is not None:
         return bootstrap_ci_two_sample(
@@ -1359,10 +1765,10 @@ def shesha(
         Which Shesha variant to compute:
 
         - 'feature_split': Unsupervised, partitions features
-        - 'sample_split': Unsupervised, bootstrap resampling (invalid estimand;
-          emits FutureWarning; do not use for inference)
-        - 'anchor': Unsupervised, anchor-based stability (invalid estimand;
-          emits FutureWarning; do not use for inference)
+        - 'sample_split': Deprecated invalid estimand (emits FutureWarning; do
+          not use for inference). Use :func:`shesha.replicate_stability`.
+        - 'anchor': Deprecated invalid estimand (emits FutureWarning; do not
+          use for inference). Use :func:`shesha.anchor_profile_stability`.
         - 'variance': Supervised, variance ratio
         - 'supervised': Supervised, RDM alignment
     **kwargs

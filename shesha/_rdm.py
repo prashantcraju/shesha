@@ -5,11 +5,9 @@ Public wrappers in ``shesha.core`` and ``shesha.sim`` keep their documented
 parameter order and delegate here.
 """
 
-import warnings
-
 import numpy as np
 from scipy.spatial.distance import pdist
-from scipy.stats import pearsonr, spearmanr
+from scipy.stats import pearsonr, rankdata, spearmanr
 
 from ._validate import (
     apply_nan_policy,
@@ -25,37 +23,15 @@ CORR_METHODS = ("spearman", "pearson")
 
 
 def validate_rdm_metric(metric: str, documented=RDM_METRICS) -> None:
-    """Accept legacy SciPy distance names with a deprecation warning."""
-    if metric in documented:
-        return
-    try:
-        probe = np.array(
-            [
-                [0.0, 0.0, 1.0],
-                [0.0, 1.0, 0.0],
-                [1.0, 0.0, 0.0],
-                [1.0, 1.0, 0.0],
-                [1.0, 0.0, 1.0],
-                [0.0, 1.0, 1.0],
-            ]
-        )
-        pdist(probe, metric=metric)
-    except (TypeError, ValueError):
-        validate_metric(metric, documented)
-    warnings.warn(
-        f"Distance metric {metric!r} is accepted for 0.2.x compatibility but is "
-        f"outside this function's documented metrics {tuple(documented)!r}. "
-        "Support for undocumented SciPy metrics will be removed in 0.3.0.",
-        FutureWarning,
-        stacklevel=3,
-    )
+    """Accept only the calling function's documented distance metrics."""
+    validate_metric(metric, documented)
 
 
 def compute_rdm_impl(
     X: np.ndarray,
     metric: str = "cosine",
     normalize: bool = True,
-    nan_policy: str = "replace",
+    nan_policy: str = "raise",
 ) -> np.ndarray:
     """Compute a condensed RDM, applying ``nan_policy`` to undefined distances."""
     X = as_2d_array(X, "X")
@@ -96,13 +72,54 @@ def correlate_rdms(rdm_x: np.ndarray, rdm_y: np.ndarray, method: str = "spearman
     return float(rho)
 
 
+def resampled_pair_index(rows: np.ndarray, n_items: int, pairs: tuple) -> np.ndarray:
+    """
+    Condensed-RDM indices for the pairs of a bootstrap resample.
+
+    ``rows`` maps resample positions to item indices in ``range(n_items)`` and
+    ``pairs`` is ``np.triu_indices(len(rows), k=1)``. Pairs that refer to the
+    same item twice are dropped: their zero self-distance would otherwise
+    appear in both RDMs and inflate agreement.
+    """
+    a = rows[pairs[0]]
+    b = rows[pairs[1]]
+    distinct = a != b
+    lo = np.minimum(a[distinct], b[distinct])
+    hi = np.maximum(a[distinct], b[distinct])
+    return n_items * lo - lo * (lo + 1) // 2 + (hi - lo - 1)
+
+
+def rowwise_correlation(A: np.ndarray, B: np.ndarray, method: str = "spearman") -> np.ndarray:
+    """
+    Correlate corresponding rows of ``A`` and ``B``.
+
+    Rows with fewer than three entries or with constant values in either input
+    are unestimable and return NaN.
+    """
+    A = np.atleast_2d(np.asarray(A, dtype=np.float64))
+    B = np.atleast_2d(np.asarray(B, dtype=np.float64))
+    out = np.full(A.shape[0], np.nan)
+    if A.shape[1] < 3:
+        return out
+    defined = (np.std(A, axis=1) >= EPS) & (np.std(B, axis=1) >= EPS)
+    if method == "spearman":
+        A = rankdata(A, axis=1)
+        B = rankdata(B, axis=1)
+    A = A - A.mean(axis=1, keepdims=True)
+    B = B - B.mean(axis=1, keepdims=True)
+    denom = np.sqrt(np.sum(A * A, axis=1) * np.sum(B * B, axis=1))
+    defined &= denom > 0
+    out[defined] = np.clip(np.sum(A * B, axis=1)[defined] / denom[defined], -1.0, 1.0)
+    return out
+
+
 def rdm_similarity_impl(
     X: np.ndarray,
     Y: np.ndarray,
     *,
     metric: str = "cosine",
     method: str = "spearman",
-    nan_policy: str = "replace",
+    nan_policy: str = "raise",
 ) -> float:
     """
     Shared RDM similarity.

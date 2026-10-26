@@ -22,9 +22,8 @@ NAN_POLICIES = ("replace", "raise", "omit", "propagate")
 NAN_REPLACE_FILL = 1.0
 NAN_REPLACE_WARNING = (
     "Undefined distances were replaced with 1.0 (nan_policy='replace'). "
-    "This silently treats undefined pairs as maximally dissimilar and can invent "
-    "structure. The default will change to nan_policy='raise' in shesha-geometry "
-    "0.3.0. Pass nan_policy='raise', 'omit', or 'propagate' to opt in now."
+    "This treats undefined pairs as maximally dissimilar and can invent "
+    "structure. Prefer nan_policy='omit' or 'propagate'."
 )
 
 
@@ -77,6 +76,76 @@ def validate_paired_samples(
             f"{names[0]} and {names[1]} must have the same number of samples: "
             f"{names[0]} has {X.shape[0]}, {names[1]} has {Y.shape[0]}"
         )
+
+
+def _as_id_array(ids, n_samples: int, name: str) -> np.ndarray:
+    ids = np.asarray(ids)
+    if ids.ndim != 1:
+        raise ValueError(f"{name} must be a 1-dimensional array, got shape {ids.shape}")
+    if ids.shape[0] != n_samples:
+        raise ValueError(
+            f"{name} length ({ids.shape[0]}) must match number of samples ({n_samples})"
+        )
+    if len(set(ids.tolist())) != ids.shape[0]:
+        raise ValueError(f"{name} must not contain duplicate identifiers")
+    return ids
+
+
+def align_paired_ids(
+    X_a: np.ndarray,
+    X_b: np.ndarray,
+    ids_a=None,
+    ids_b=None,
+) -> Tuple[np.ndarray, np.ndarray, Optional[np.ndarray]]:
+    """
+    Align ``X_b`` rows to ``X_a`` rows by sample identifier.
+
+    Without identifiers, rows are assumed to correspond and only the sample
+    counts are checked. With identifiers, both sets must be unique and
+    identical; ``X_b`` is reordered to follow ``ids_a``.
+    """
+    if ids_a is None and ids_b is None:
+        validate_paired_samples(X_a, X_b, names=("X_a", "X_b"))
+        return X_a, X_b, None
+    if ids_a is None or ids_b is None:
+        raise ValueError("ids_a and ids_b must be provided together")
+
+    ids_a = _as_id_array(ids_a, X_a.shape[0], "ids_a")
+    ids_b = _as_id_array(ids_b, X_b.shape[0], "ids_b")
+    position_b = {key: index for index, key in enumerate(ids_b.tolist())}
+    only_a = [key for key in ids_a.tolist() if key not in position_b]
+    n_only_b = len(ids_b) - (len(ids_a) - len(only_a))
+    if only_a or n_only_b:
+        raise ValueError(
+            "ids_a and ids_b must contain the same identifiers: "
+            f"{len(only_a)} only in ids_a, {n_only_b} only in ids_b"
+        )
+    order = np.array([position_b[key] for key in ids_a.tolist()], dtype=int)
+    return X_a, X_b[order], ids_a
+
+
+def resolve_positions(selection, ids: Optional[np.ndarray], n_samples: int, name: str):
+    """Map identifiers (or integer row indices when ``ids`` is None) to rows."""
+    selection = np.asarray(selection)
+    if selection.ndim != 1 or selection.size == 0:
+        raise ValueError(f"{name} must be a non-empty 1-dimensional sequence")
+    if ids is not None:
+        lookup = {key: index for index, key in enumerate(ids.tolist())}
+        missing = [key for key in selection.tolist() if key not in lookup]
+        if missing:
+            raise ValueError(f"{name} contains {len(missing)} unknown identifier(s): {missing[:5]}")
+        positions = np.array([lookup[key] for key in selection.tolist()], dtype=int)
+    else:
+        if not np.issubdtype(selection.dtype, np.integer):
+            raise ValueError(
+                f"{name} must be integer row indices when ids_a/ids_b are not provided"
+            )
+        positions = selection.astype(int)
+        if positions.min() < 0 or positions.max() >= n_samples:
+            raise ValueError(f"{name} indices must be in [0, {n_samples})")
+    if np.unique(positions).size != positions.size:
+        raise ValueError(f"{name} must not contain duplicates")
+    return positions
 
 
 def validate_metric(metric: str, allowed: Sequence[str], name: str = "metric") -> None:
@@ -152,7 +221,7 @@ def validate_nan_policy(nan_policy: str) -> None:
 
 def apply_nan_policy(
     *arrays: np.ndarray,
-    nan_policy: str = "replace",
+    nan_policy: str = "raise",
     fill_value: float = NAN_REPLACE_FILL,
 ) -> Union[Tuple[np.ndarray, ...], None]:
     """
@@ -187,7 +256,7 @@ def apply_nan_policy(
         )
 
     if nan_policy == "replace":
-        warnings.warn(NAN_REPLACE_WARNING, FutureWarning, stacklevel=3)
+        warnings.warn(NAN_REPLACE_WARNING, UserWarning, stacklevel=3)
         filled = [
             np.nan_to_num(array, nan=fill_value, posinf=fill_value, neginf=fill_value)
             for array in processed

@@ -24,6 +24,7 @@ representations via self-consistency of Representational Dissimilarity Matrices 
    :caption: User Guide
 
    guide/unsupervised
+   guide/replicate
    guide/supervised
    guide/drift
    guide/bio
@@ -36,6 +37,7 @@ representations via self-consistency of Representational Dissimilarity Matrices 
    :caption: API Reference
 
    api/core
+   api/replicate
    api/bio
    api/sim
 

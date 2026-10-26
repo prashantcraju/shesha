@@ -21,8 +21,10 @@ except ImportError:
     from typing_extensions import Literal
 
 from ._rdm import rdm_similarity_impl
+from ._result import StabilityResult, bootstrap_result, validate_return_type
 from ._utils import bootstrap_ci_two_sample
 from ._validate import as_2d_array, validate_ci, validate_paired_samples, validate_positive_int
+from .replicate import paired_rdm_result
 
 __all__ = [
     "cka",
@@ -46,7 +48,8 @@ def cka_linear(
     n_bootstrap_ci: Optional[int] = None,
     ci: float = 0.95,
     seed: Optional[int] = None,
-) -> Union[float, dict]:
+    return_type: Literal["float", "result"] = "float",
+) -> Union[float, dict, StabilityResult]:
     """
     Linear Centered Kernel Alignment (CKA) - Standard version.
 
@@ -68,6 +71,10 @@ def cka_linear(
         Confidence level for the interval.
     seed : int, optional
         Random seed for bootstrap reproducibility.
+    return_type : {'float', 'result'}, default='float'
+        ``'result'`` returns a :class:`~shesha.StabilityResult` with the
+        full-data ``estimate`` and, when ``n_bootstrap_ci`` is set, its data
+        interval.
 
     Returns
     -------
@@ -108,6 +115,22 @@ def cka_linear(
     Similarity of neural network representations revisited.
     ICML 2019.
     """
+    validate_return_type(return_type)
+    if return_type == "result":
+        return bootstrap_result(
+            cka_linear,
+            "cka_linear",
+            (
+                X,
+                Y,
+            ),
+            {"seed": seed},
+            n_bootstrap_ci,
+            ci,
+            bootstrap_unit="observations (paired)",
+            monte_carlo_se=0.0,
+        )
+
     validate_positive_int(n_bootstrap_ci, "n_bootstrap_ci", allow_none=True)
     validate_ci(ci)
     X = as_2d_array(X, "X")
@@ -145,7 +168,8 @@ def cka_debiased(
     n_bootstrap_ci: Optional[int] = None,
     ci: float = 0.95,
     seed: Optional[int] = None,
-) -> Union[float, dict]:
+    return_type: Literal["float", "result"] = "float",
+) -> Union[float, dict, StabilityResult]:
     """
     Debiased Centered Kernel Alignment (CKA).
 
@@ -166,6 +190,10 @@ def cka_debiased(
         Confidence level for the interval.
     seed : int, optional
         Random seed for bootstrap reproducibility.
+    return_type : {'float', 'result'}, default='float'
+        ``'result'`` returns a :class:`~shesha.StabilityResult` with the
+        full-data ``estimate`` and, when ``n_bootstrap_ci`` is set, its data
+        interval.
 
     Returns
     -------
@@ -209,6 +237,22 @@ def cka_debiased(
     Similarity of neural network representations revisited.
     ICML 2019.
     """
+    validate_return_type(return_type)
+    if return_type == "result":
+        return bootstrap_result(
+            cka_debiased,
+            "cka_debiased",
+            (
+                X,
+                Y,
+            ),
+            {"seed": seed},
+            n_bootstrap_ci,
+            ci,
+            bootstrap_unit="observations (paired)",
+            monte_carlo_se=0.0,
+        )
+
     validate_positive_int(n_bootstrap_ci, "n_bootstrap_ci", allow_none=True)
     validate_ci(ci)
     X = as_2d_array(X, "X")
@@ -290,7 +334,8 @@ def cka(
     n_bootstrap_ci: Optional[int] = None,
     ci: float = 0.95,
     seed: Optional[int] = None,
-) -> Union[float, dict]:
+    return_type: Literal["float", "result"] = "float",
+) -> Union[float, dict, StabilityResult]:
     """
     Centered Kernel Alignment (CKA) - Unified interface.
 
@@ -311,6 +356,10 @@ def cka(
         Confidence level for the interval.
     seed : int, optional
         Random seed for bootstrap reproducibility.
+    return_type : {'float', 'result'}, default='float'
+        ``'result'`` returns a :class:`~shesha.StabilityResult` with the
+        full-data ``estimate`` and, when ``n_bootstrap_ci`` is set, its data
+        interval.
 
     Returns
     -------
@@ -340,6 +389,22 @@ def cka(
     cka_linear : Standard CKA implementation
     cka_debiased : Debiased CKA implementation
     """
+    validate_return_type(return_type)
+    if return_type == "result":
+        return bootstrap_result(
+            cka,
+            "cka",
+            (
+                X,
+                Y,
+            ),
+            {"debiased": debiased, "seed": seed},
+            n_bootstrap_ci,
+            ci,
+            bootstrap_unit="observations (paired)",
+            monte_carlo_se=0.0,
+        )
+
     if debiased:
         return cka_debiased(X, Y, n_bootstrap_ci=n_bootstrap_ci, ci=ci, seed=seed)
     else:
@@ -392,7 +457,8 @@ def procrustes_similarity(
     n_bootstrap_ci: Optional[int] = None,
     ci: float = 0.95,
     seed: Optional[int] = None,
-) -> Union[float, dict]:
+    return_type: Literal["float", "result"] = "float",
+) -> Union[float, dict, StabilityResult]:
     """
     Procrustes similarity between two representations.
 
@@ -419,6 +485,10 @@ def procrustes_similarity(
         Confidence level for the interval.
     seed : int, optional
         Random seed for bootstrap reproducibility.
+    return_type : {'float', 'result'}, default='float'
+        ``'result'`` returns a :class:`~shesha.StabilityResult` with the
+        full-data ``estimate`` and, when ``n_bootstrap_ci`` is set, its data
+        interval.
 
     Returns
     -------
@@ -455,6 +525,22 @@ def procrustes_similarity(
     Schönemann, P. H. (1966). A generalized solution of the orthogonal
     Procrustes problem. Psychometrika, 31(1), 1-10.
     """
+    validate_return_type(return_type)
+    if return_type == "result":
+        return bootstrap_result(
+            procrustes_similarity,
+            "procrustes_similarity",
+            (
+                X,
+                Y,
+            ),
+            {"center": center, "scale": scale, "seed": seed},
+            n_bootstrap_ci,
+            ci,
+            bootstrap_unit="observations (paired)",
+            monte_carlo_se=0.0,
+        )
+
     validate_positive_int(n_bootstrap_ci, "n_bootstrap_ci", allow_none=True)
     validate_ci(ci)
     X = as_2d_array(X, "X")
@@ -507,8 +593,9 @@ def rdm_similarity(
     n_bootstrap_ci: Optional[int] = None,
     ci: float = 0.95,
     seed: Optional[int] = None,
-    nan_policy: Literal["replace", "raise", "omit", "propagate"] = "replace",
-) -> Union[float, dict]:
+    nan_policy: Literal["raise", "omit", "propagate", "replace"] = "raise",
+    return_type: Literal["float", "result"] = "float",
+) -> Union[float, dict, StabilityResult]:
     """
     RDM-based similarity using correlation of pairwise distances.
 
@@ -534,9 +621,15 @@ def rdm_similarity(
         Confidence level for the interval.
     seed : int, optional
         Random seed for bootstrap reproducibility.
-    nan_policy : {'replace', 'raise', 'omit', 'propagate'}, default='replace'
-        How to handle undefined distances. The default will change to
-        ``raise`` in 0.3.0.
+    nan_policy : {'raise', 'omit', 'propagate', 'replace'}, default='raise'
+        How to handle undefined distances. ``omit`` drops pairs undefined in
+        either RDM, ``propagate`` returns NaN, and ``replace`` fills them with
+        1.0 and warns.
+    return_type : {'float', 'result'}, default='float'
+        ``'result'`` returns a :class:`~shesha.StabilityResult` with the
+        full-data ``estimate`` and, when ``n_bootstrap_ci`` is set, a data
+        interval from an observation bootstrap that drops pairs referring
+        to the same observation twice.
 
     Returns
     -------
@@ -579,6 +672,23 @@ def rdm_similarity(
     X = as_2d_array(X, "X")
     Y = as_2d_array(Y, "Y")
     validate_paired_samples(X, Y)
+
+    validate_return_type(return_type)
+    if return_type == "result":
+        estimate = rdm_similarity(X, Y, metric=metric, method=method, nan_policy=nan_policy)
+        return paired_rdm_result(
+            "rdm_similarity",
+            estimate,
+            X,
+            Y,
+            metric=metric,
+            method=method,
+            nan_policy=nan_policy,
+            n_bootstrap_ci=n_bootstrap_ci,
+            ci=ci,
+            seed=seed,
+            drift=False,
+        )
 
     if n_bootstrap_ci is not None:
         return bootstrap_ci_two_sample(

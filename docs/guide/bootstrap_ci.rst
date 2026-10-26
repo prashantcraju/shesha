@@ -19,6 +19,24 @@ This "outer bootstrap" is independent of any internal iterations the metric
 already performs (e.g. ``n_splits`` in ``feature_split``). It quantifies
 uncertainty due to the *finite sample* of observations.
 
+.. note::
+
+   In the dictionary return described below, ``mean`` is the mean of the
+   bootstrap replicates, not the full-data estimate, and duplicated
+   observations in a resample contribute zero self-distances to RDM-based
+   metrics. Every metric in the examples below, except the deprecated
+   ``sample_split`` and ``anchor_stability``, also accepts
+   ``return_type="result"``, which returns a :class:`shesha.StabilityResult`
+   whose ``estimate`` is the full-data value. For ``feature_split``,
+   ``rdm_similarity``, ``rdm_drift`` and the matched-replicate estimators
+   the data interval also excludes duplicated-observation pairs. The
+   matched-replicate estimators only provide intervals through
+   ``return_type="result"``.
+
+   CKA, Procrustes, supervised, and bio intervals still use standard
+   resampling with duplicated observations, which can bias similarity
+   intervals upward relative to the estimate.
+
 Usage
 -----
 
@@ -78,9 +96,24 @@ Examples across modules
 
    result = shesha.feature_split(X, n_splits=30, n_bootstrap_ci=1000, seed=320)
 
+   # Structured result: full-data estimate, partition and data uncertainty
+   result = shesha.feature_split(X, n_bootstrap_ci=1000, seed=320, return_type="result")
+
 ``sample_split`` and ``anchor_stability`` also accept ``n_bootstrap_ci``, but
-those estimators are not scientifically valid. Confidence intervals on them
-should not be used for inference. See :doc:`caveats`.
+those estimators are deprecated and not scientifically valid. Confidence
+intervals on them should not be used for inference. See :doc:`caveats`.
+
+**Matched replicates**
+
+.. code-block:: python
+
+   result = shesha.replicate_stability(
+       X_rep1, X_rep2, n_bootstrap_ci=1000, seed=320, return_type="result"
+   )
+   result = shesha.anchor_profile_stability(
+       X_rep1, X_rep2, anchor_ids=anchors, n_bootstrap_ci=1000, seed=320,
+       return_type="result",
+   )
 
 **Core (supervised)**
 

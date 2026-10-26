@@ -8,6 +8,41 @@ No unreleased changes.
 
 ---
 
+## [0.3.0] - 2026-10-26
+
+Statistical redesign. This release contains breaking changes; see **Changed (breaking)**.
+
+### Added
+
+- `shesha.replicate_stability(X_a, X_b, *, ids_a=None, ids_b=None, ...)`: matched-replicate RDM stability. Row `i` of both inputs must be the same observation; corresponding RDM entries therefore describe the same pair. Optional unique `ids_a` / `ids_b` reorder `X_b` to `X_a` and are rejected when duplicated, one-sided, or not identical as sets. Replaces `sample_split`.
+- `shesha.anchor_profile_stability(X_a, X_b, anchor_ids, probe_ids=None, ...)`: for each anchor, correlates its distance profile over a shared probe set across replicates and averages over anchors. Anchors and probes are selected by identifier (or row index) and must be disjoint; at least 3 probes are required. Replaces `anchor_stability`.
+- `shesha.StabilityResult`: frozen dataclass returned when `return_type="result"`. Fields: `estimate` (always the full-data value), `data_ci_low` / `data_ci_high` / `ci_level` (observation bootstrap), `partition_sd` and `monte_carlo_se` (random-partition variability), `n_valid_splits`, `n_bootstraps`, `component_scores` (per split or per anchor), `warnings`, and `metadata` (estimator, configuration, input shape, seed, package version). `to_dict()` is JSON-serializable and `float(result)` returns the estimate.
+- `feature_split(..., return_type="result")`: separates partition uncertainty from dataset uncertainty. The estimate equals the float return value. The data interval resamples observations while holding the full-data feature partitions fixed.
+- **Convergence-based splits**: `feature_split(..., target_mc_se=..., max_splits=...)` treats `n_splits` as a minimum and keeps drawing partitions until the Monte Carlo standard error is at most `target_mc_se` or `max_splits` (default `max(n_splits, 500)`) is reached. Partitions come from the same random stream, so the first `n_splits` match a fixed-split run. Non-convergence emits a `UserWarning` (float return) or is reported in `metadata["converged"]` and `warnings`.
+- `return_type="result"` on every metric with `n_bootstrap_ci`: `variance_ratio`, `supervised_alignment`, `class_separation_ratio`, `lda_stability`, `rdm_similarity`, `rdm_drift`, `sim.cka`, `sim.cka_linear`, `sim.cka_debiased`, `sim.procrustes_similarity`, `sim.rdm_similarity`, `bio.perturbation_coherence`, and `bio.perturbation_effect_size`. The estimate always equals the float return value. `monte_carlo_se` is `0.0` for deterministic metrics and NaN for metrics with unsummarized internal subsampling.
+- Bootstrap intervals for `replicate_stability`, `anchor_profile_stability`, `feature_split`, `rdm_similarity`, `rdm_drift`, and `sim.rdm_similarity` in `StabilityResult` drop pairs that refer to the same observation twice. The legacy dictionary bootstraps keep those zero self-distances, which biases RDM agreement upward.
+- `shesha.replicate` module and docs pages (`guide/replicate`, `api/replicate`); `tests/test_replicate.py` covering identity, independence, monotonic noise degradation, ID alignment and rejection, NaN policies, duplicate-pair exclusion, result fields, and the 0.2.x counterexample where the legacy estimators score about 0 on redundant geometry; `tests/test_results.py` covering the result contract across all metrics and convergence behavior.
+
+### Known limitations
+
+- Data intervals for CKA, Procrustes, the supervised metrics, and the bio metrics still come from each metric's standard resampling, which duplicates observations. For similarity metrics this can bias the interval upward relative to the estimate.
+
+### Changed (breaking)
+
+- **`nan_policy` defaults to `"raise"`** in `compute_rdm`, `feature_split`, `sample_split`, `anchor_stability`, `rdm_similarity`, `rdm_drift`, and `shesha.sim.rdm_similarity`. Undefined distances (zero or constant vectors under cosine or correlation distance, including all-zero feature halves in sparse data) now raise `ValueError`. Pass `nan_policy="omit"` or `"propagate"` to handle them; `"replace"` still fills `1.0` and now emits `UserWarning` instead of `FutureWarning`.
+- **Undocumented SciPy metrics are rejected.** Each function accepts only its documented metric set, as announced in 0.2.29.
+- `sample_split` and `anchor_stability` are **deprecated** and will be removed in a future release. Their `FutureWarning` now points to `replicate_stability` and `anchor_profile_stability`. Finite-distance results are unchanged.
+
+### Changed
+
+- `feature_split` documents that the dictionary bootstrap `mean` is the mean of bootstrap replicates, not the full-data estimate.
+- User guide, caveats, bootstrap guide, README / PyPI known limitations, and `examples/tutorial.py` use the matched-replicate estimators and the new `nan_policy` default.
+- `class_separation_ratio` and the legacy anchor statistic were split into helpers to satisfy the complexity check; outputs are bit-identical.
+- `tutorials/crispr_tutorial.ipynb`: removed the biological interpretation section and interpretive claims; the notebook is now a data demonstration.
+- Version `0.3.0` in `pyproject.toml`, `CITATION.cff`, and the `CONTRIBUTING.md` release example.
+
+---
+
 ## [0.2.29] - 2026-09-06
 
 Safety release. Finite-distance calculations for `sample_split` and `anchor_stability` are unchanged; undefined distances now follow `nan_policy`. Their outputs must not be used for scientific inference.
