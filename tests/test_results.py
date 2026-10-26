@@ -113,6 +113,26 @@ class TestResultDetails:
         assert result.n_bootstraps == 0
         assert "5 of 5 bootstrap resamples" in result.warnings[0]
 
+    def test_equality_treats_nan_fields_as_equal(self):
+        def make(**changes):
+            fields = {
+                "estimate": 0.5,
+                "data_ci_low": float("nan"),
+                "partition_sd": float("nan"),
+                "monte_carlo_se": float("nan"),
+                "component_scores": (0.1, float("nan")),
+                "metadata": {"seed": 1, "target_mc_se": float("nan")},
+            }
+            fields.update(changes)
+            return shesha.StabilityResult(**fields)
+
+        assert make() == make()
+        assert make() != make(estimate=0.6)
+        assert make() != make(partition_sd=0.1)
+        assert make() != make(component_scores=(0.1, 0.2))
+        assert make() != make(metadata={"seed": 2, "target_mc_se": float("nan")})
+        assert make() != 0.5
+
 
 def _structured(seed=0):
     rng = np.random.default_rng(seed)

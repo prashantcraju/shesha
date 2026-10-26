@@ -63,6 +63,16 @@ class StabilityResult:
     warnings: Tuple[str, ...] = ()
     metadata: Dict[str, Any] = field(default_factory=dict)
 
+    def __eq__(self, other: object) -> bool:
+        # NaN marks "not applicable" here, so identical results must compare
+        # equal; Python 3.13 dataclass equality no longer does that.
+        if other.__class__ is not self.__class__:
+            return NotImplemented
+        return all(
+            _same_value(getattr(self, name), getattr(other, name))
+            for name in self.__dataclass_fields__
+        )
+
     def __float__(self) -> float:
         return float(self.estimate)
 
@@ -72,6 +82,23 @@ class StabilityResult:
         data["component_scores"] = list(self.component_scores)
         data["warnings"] = list(self.warnings)
         return data
+
+
+def _same_value(a: Any, b: Any) -> bool:
+    if isinstance(a, dict) and isinstance(b, dict):
+        return a.keys() == b.keys() and all(_same_value(a[key], b[key]) for key in a)
+    if isinstance(a, (list, tuple)) and isinstance(b, (list, tuple)):
+        return (
+            type(a) is type(b) and len(a) == len(b) and all(_same_value(x, y) for x, y in zip(a, b))
+        )
+    if isinstance(a, np.ndarray) or isinstance(b, np.ndarray):
+        try:
+            return bool(np.array_equal(a, b, equal_nan=True))
+        except TypeError:
+            return bool(np.array_equal(a, b))
+    if isinstance(a, float) and isinstance(b, float) and np.isnan(a) and np.isnan(b):
+        return True
+    return bool(a == b)
 
 
 def validate_return_type(return_type: str) -> None:
