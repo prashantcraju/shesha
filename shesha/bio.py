@@ -16,6 +16,7 @@ try:
 except ImportError:
     from typing_extensions import Literal
 
+from ._result import StabilityResult, bootstrap_result, validate_return_type
 from ._utils import bootstrap_ci_bio
 from ._validate import (
     as_2d_array,
@@ -67,7 +68,8 @@ def perturbation_coherence(
     max_samples: Optional[int] = 1000,
     n_bootstrap_ci: Optional[int] = None,
     ci: float = 0.95,
-) -> Union[float, dict]:
+    return_type: Literal["float", "result"] = "float",
+) -> Union[float, dict, StabilityResult]:
     """
     Perturbation coherence: consistency of perturbation effects across samples.
 
@@ -102,6 +104,10 @@ def perturbation_coherence(
         control and perturbed populations this many times.
     ci : float, default=0.95
         Confidence level for the interval.
+    return_type : {'float', 'result'}, default='float'
+        ``'result'`` returns a :class:`~shesha.StabilityResult` with the
+        full-data ``estimate`` and, when ``n_bootstrap_ci`` is set, its data
+        interval.
 
     Returns
     -------
@@ -137,6 +143,31 @@ def perturbation_coherence(
     - Whitened: Mahalanobis-scaled space accounting for control covariance
     - k-NN: Local centroid of k nearest control cells for each perturbed cell
     """
+    validate_return_type(return_type)
+    if return_type == "result":
+        return bootstrap_result(
+            perturbation_coherence,
+            "perturbation_coherence",
+            (
+                X_control,
+                X_perturbed,
+            ),
+            {
+                "method": method,
+                "metric": metric,
+                "k": k,
+                "regularization": regularization,
+                "seed": seed,
+                "max_samples": max_samples,
+            },
+            n_bootstrap_ci,
+            ci,
+            bootstrap_unit="control and perturbed populations (resampled independently)",
+            monte_carlo_se=(
+                0.0 if max_samples is None or len(X_perturbed) <= max_samples else np.nan
+            ),
+        )
+
     validate_positive_int(n_bootstrap_ci, "n_bootstrap_ci", allow_none=True)
     validate_ci(ci)
     validate_metric(method, ("standard", "whitened", "knn"), name="method")
@@ -331,7 +362,8 @@ def perturbation_effect_size(
     n_bootstrap_ci: Optional[int] = None,
     ci: float = 0.95,
     seed: Optional[int] = None,
-) -> Union[float, dict]:
+    return_type: Literal["float", "result"] = "float",
+) -> Union[float, dict, StabilityResult]:
     """
     Compute the magnitude of the perturbation effect.
 
@@ -353,6 +385,10 @@ def perturbation_effect_size(
         Confidence level for the interval.
     seed : int, optional
         Random seed for bootstrap reproducibility.
+    return_type : {'float', 'result'}, default='float'
+        ``'result'`` returns a :class:`~shesha.StabilityResult` with the
+        full-data ``estimate`` and, when ``n_bootstrap_ci`` is set, its data
+        interval.
 
     Returns
     -------
@@ -361,6 +397,22 @@ def perturbation_effect_size(
         If n_bootstrap_ci is set: dict with keys 'mean', 'ci_low', 'ci_high',
         'std', 'n_bootstraps', 'ci_level'.
     """
+    validate_return_type(return_type)
+    if return_type == "result":
+        return bootstrap_result(
+            perturbation_effect_size,
+            "perturbation_effect_size",
+            (
+                X_control,
+                X_perturbed,
+            ),
+            {"metric": metric, "seed": seed},
+            n_bootstrap_ci,
+            ci,
+            bootstrap_unit="control and perturbed populations (resampled independently)",
+            monte_carlo_se=0.0,
+        )
+
     X_control = np.asarray(X_control, dtype=np.float64)
     X_perturbed = np.asarray(X_perturbed, dtype=np.float64)
 

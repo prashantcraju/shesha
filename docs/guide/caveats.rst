@@ -36,30 +36,23 @@ Invalid unmatched-sample estimators
 -----------------------------------
 
 :func:`shesha.sample_split` and :func:`shesha.anchor_stability` are
-retained for compatibility, but their current estimands are **not
-scientifically identifiable**. They correlate distance entries that do
-not refer to the same observation pairs.
+deprecated. Their estimands are **not scientifically identifiable**: they
+correlate distance entries that do not refer to the same observation pairs.
 
-Both functions emit a :class:`FutureWarning` on every call. Do not use
-their outputs for scientific inference. shesha-geometry 0.3.0 will
-replace them with matched-replicate APIs.
-
-Bootstrap confidence intervals on these two functions inherit the same
-invalid estimand.
+Both functions emit a :class:`FutureWarning` on every call and will be
+removed in a future release. Do not use their outputs, or confidence
+intervals on them, for scientific inference. Use the matched-replicate
+estimators in :doc:`replicate` instead.
 
 Undefined distances
 -------------------
 
 Cosine and correlation distances are undefined for zero or constant
-vectors. In 0.2.29 the consistent RDM default ``nan_policy='replace'`` fills
-those entries with ``1.0``. Behavior is unchanged when all computed distances
-are finite, but earlier undefined-distance behavior changes in APIs that
-previously propagated NaN or returned zero. Replacement can invent structure
-that was not present in the data.
-
-When a replacement actually occurs, Shesha emits a :class:`FutureWarning`.
-The default will change to ``nan_policy='raise'`` in 0.3.0. Prefer
-``raise``, ``omit``, or ``propagate`` now if you want the safer behavior.
+vectors. Since 0.3.0 every RDM path defaults to ``nan_policy='raise'``.
+``replace`` fills undefined entries with ``1.0`` and emits a
+:class:`UserWarning`; it treats those pairs as maximally dissimilar and can
+invent structure that was not present in the data. Prefer ``omit`` or
+``propagate``.
 
 ``propagate`` makes an estimator undefined if any required distance is
 undefined. ``compute_rdm`` cannot omit individual distances while retaining

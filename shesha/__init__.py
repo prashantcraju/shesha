@@ -18,6 +18,9 @@ Basic usage:
     >>> similarity = shesha.rdm_similarity(X_before, X_after)
     >>> drift = shesha.rdm_drift(X_before, X_after)
 
+    >>> # Stability across matched replicates of the same observations
+    >>> score = shesha.replicate_stability(X_rep1, X_rep2)
+
     >>> # Biological perturbation analysis
     >>> from shesha.bio import perturbation_coherence
     >>> coherence = perturbation_coherence(X_control, X_perturbed)
@@ -27,7 +30,8 @@ from importlib.metadata import PackageNotFoundError
 from importlib.metadata import version as _pkg_version
 from pathlib import Path
 
-from . import bio, sim
+from . import bio, replicate, sim
+from ._result import StabilityResult
 from .core import (
     anchor_stability,
     class_separation_ratio,
@@ -46,6 +50,7 @@ from .core import (
     # Supervised variants
     variance_ratio,
 )
+from .replicate import anchor_profile_stability, replicate_stability
 
 
 def _package_version() -> str:
@@ -67,6 +72,9 @@ __author__ = "Prashant Raju"
 __all__ = [
     "shesha",
     "feature_split",
+    "replicate_stability",
+    "anchor_profile_stability",
+    "StabilityResult",
     "sample_split",
     "anchor_stability",
     "variance_ratio",
@@ -77,5 +85,6 @@ __all__ = [
     "rdm_drift",
     "compute_rdm",
     "bio",
+    "replicate",
     "sim",
 ]

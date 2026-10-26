@@ -15,6 +15,12 @@ Unsupervised metrics
 --------------------
 
 .. autofunction:: shesha.feature_split
+
+Matched-replicate metrics are documented in :doc:`replicate`.
+
+Deprecated
+----------
+
 .. autofunction:: shesha.sample_split
 .. autofunction:: shesha.anchor_stability
 
